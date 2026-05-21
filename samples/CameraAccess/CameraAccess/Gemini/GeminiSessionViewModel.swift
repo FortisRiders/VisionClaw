@@ -14,7 +14,7 @@ class GeminiSessionViewModel: ObservableObject {
   private let geminiService = GeminiLiveService()
   private let openClawBridge = OpenClawBridge()
   private var toolCallRouter: ToolCallRouter?
-  private let audioManager = AudioManager()
+  let audioManager = AudioManager()
   private let eventClient = OpenClawEventClient()
   private var lastVideoFrameTime: Date = .distantPast
   private var stateObservation: Task<Void, Never>?
@@ -35,10 +35,8 @@ class GeminiSessionViewModel: ObservableObject {
     audioManager.onAudioCaptured = { [weak self] data in
       guard let self else { return }
       Task { @MainActor in
-        // Mute mic while model speaks when speaker is on the phone
-        // (loudspeaker + co-located mic overwhelms iOS echo cancellation)
-        let speakerOnPhone = self.streamingMode == .iPhone || SettingsManager.shared.speakerOutputEnabled
-        if speakerOnPhone && self.geminiService.isModelSpeaking { return }
+        // Mute mic while model speaks in iPhone mode (co-located mic/speaker)
+        if self.streamingMode == .iPhone && self.geminiService.isModelSpeaking { return }
         self.geminiService.sendAudio(data: data)
       }
     }
@@ -193,7 +191,6 @@ class GeminiSessionViewModel: ObservableObject {
   }
 
   func sendVideoFrameIfThrottled(image: UIImage) {
-    guard SettingsManager.shared.videoStreamingEnabled else { return }
     guard isGeminiActive, connectionState == .ready else { return }
     let now = Date()
     guard now.timeIntervalSince(lastVideoFrameTime) >= GeminiConfig.videoFrameInterval else { return }

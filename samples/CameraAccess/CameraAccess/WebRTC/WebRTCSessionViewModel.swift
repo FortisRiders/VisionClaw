@@ -223,7 +223,10 @@ class WebRTCSessionViewModel: ObservableObject {
         errorMessage = msg
       }
 
-    case .roomJoined, .offer:
+    case .roomJoined:
+      break
+
+    case .offer:
       break
     }
   }

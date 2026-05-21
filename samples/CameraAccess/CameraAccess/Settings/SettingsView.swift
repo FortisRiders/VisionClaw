@@ -1,103 +1,65 @@
+import CryptoKit
 import SwiftUI
 
 struct SettingsView: View {
   @Environment(\.dismiss) private var dismiss
   private let settings = SettingsManager.shared
 
-  @State private var geminiAPIKey: String = ""
-  @State private var openClawHost: String = ""
-  @State private var openClawPort: String = ""
-  @State private var openClawHookToken: String = ""
-  @State private var openClawGatewayToken: String = ""
-  @State private var geminiSystemPrompt: String = ""
+  @State private var openClawDeviceId: String = ""
+  @State private var deviceIdCopied = false
   @State private var webrtcSignalingURL: String = ""
-  @State private var speakerOutputEnabled: Bool = false
-  @State private var videoStreamingEnabled: Bool = true
+  @State private var showLiveButton: Bool = false
   @State private var proactiveNotificationsEnabled: Bool = true
   @State private var showResetConfirmation = false
+  @State private var profileSheet: ProfileSheet? = nil
 
   var body: some View {
     NavigationView {
       Form {
-        Section(header: Text("Gemini API")) {
-          VStack(alignment: .leading, spacing: 4) {
-            Text("API Key")
+        ProfileSettingsSection(activeSheet: $profileSheet)
+
+        Section(header: Text("OpenClaw"), footer: Text("Share your Device ID with the gateway admin to get this device approved for proactive notifications.")) {
+          VStack(alignment: .leading, spacing: 6) {
+            Text("Device ID")
               .font(.caption)
               .foregroundColor(.secondary)
-            TextField("Enter Gemini API key", text: $geminiAPIKey)
-              .autocapitalization(.none)
-              .disableAutocorrection(true)
-              .font(.system(.body, design: .monospaced))
+            HStack {
+              Text(openClawDeviceId.isEmpty ? "Connect once to generate" : openClawDeviceId)
+                .font(.system(.caption, design: .monospaced))
+                .foregroundColor(openClawDeviceId.isEmpty ? .secondary : .primary)
+                .lineLimit(2)
+                .minimumScaleFactor(0.7)
+              Spacer()
+              Button {
+                UIPasteboard.general.string = openClawDeviceId
+                deviceIdCopied = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                  deviceIdCopied = false
+                }
+              } label: {
+                Image(systemName: deviceIdCopied ? "checkmark" : "doc.on.doc")
+                  .foregroundColor(deviceIdCopied ? .green : .accentColor)
+              }
+              .disabled(openClawDeviceId.isEmpty)
+            }
           }
+          .padding(.vertical, 2)
         }
 
-        Section(header: Text("System Prompt"), footer: Text("Customize the AI assistant's behavior and personality. Changes take effect on the next Gemini session.")) {
-          TextEditor(text: $geminiSystemPrompt)
-            .font(.system(.body, design: .monospaced))
-            .frame(minHeight: 200)
-        }
-
-        Section(header: Text("OpenClaw"), footer: Text("Connect to an OpenClaw gateway running on your Mac for agentic tool-calling.")) {
-          VStack(alignment: .leading, spacing: 4) {
-            Text("Host")
-              .font(.caption)
-              .foregroundColor(.secondary)
-            TextField("http://your-mac.local", text: $openClawHost)
-              .autocapitalization(.none)
-              .disableAutocorrection(true)
-              .keyboardType(.URL)
-              .font(.system(.body, design: .monospaced))
+        Section(header: Text("WebRTC"), footer: Text("Enable to show the Live streaming button in streaming controls. Requires a signaling server URL.")) {
+          Toggle("Show Live Button", isOn: $showLiveButton)
+          if showLiveButton {
+            VStack(alignment: .leading, spacing: 4) {
+              Text("Signaling URL")
+                .font(.caption)
+                .foregroundColor(.secondary)
+              TextField("wss://your-server.example.com", text: $webrtcSignalingURL)
+                .autocapitalization(.none)
+                .disableAutocorrection(true)
+                .keyboardType(.URL)
+                .font(.system(.body, design: .monospaced))
+            }
           }
-
-          VStack(alignment: .leading, spacing: 4) {
-            Text("Port")
-              .font(.caption)
-              .foregroundColor(.secondary)
-            TextField("18789", text: $openClawPort)
-              .keyboardType(.numberPad)
-              .font(.system(.body, design: .monospaced))
-          }
-
-          VStack(alignment: .leading, spacing: 4) {
-            Text("Hook Token")
-              .font(.caption)
-              .foregroundColor(.secondary)
-            TextField("Hook token", text: $openClawHookToken)
-              .autocapitalization(.none)
-              .disableAutocorrection(true)
-              .font(.system(.body, design: .monospaced))
-          }
-
-          VStack(alignment: .leading, spacing: 4) {
-            Text("Gateway Token")
-              .font(.caption)
-              .foregroundColor(.secondary)
-            TextField("Gateway auth token", text: $openClawGatewayToken)
-              .autocapitalization(.none)
-              .disableAutocorrection(true)
-              .font(.system(.body, design: .monospaced))
-          }
-        }
-
-        Section(header: Text("WebRTC")) {
-          VStack(alignment: .leading, spacing: 4) {
-            Text("Signaling URL")
-              .font(.caption)
-              .foregroundColor(.secondary)
-            TextField("wss://your-server.example.com", text: $webrtcSignalingURL)
-              .autocapitalization(.none)
-              .disableAutocorrection(true)
-              .keyboardType(.URL)
-              .font(.system(.body, design: .monospaced))
-          }
-        }
-
-        Section(header: Text("Audio"), footer: Text("Route audio output to the iPhone speaker instead of glasses. Useful for demos where others need to hear.")) {
-          Toggle("Speaker Output", isOn: $speakerOutputEnabled)
-        }
-
-        Section(header: Text("Video"), footer: Text("Disable video streaming to save battery. Audio remains active for voice-only interaction.")) {
-          Toggle("Video Streaming", isOn: $videoStreamingEnabled)
         }
 
         Section(header: Text("Notifications"), footer: Text("Receive proactive updates from OpenClaw (heartbeat, scheduled tasks) spoken through the glasses.")) {
@@ -115,9 +77,7 @@ struct SettingsView: View {
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .navigationBarLeading) {
-          Button("Cancel") {
-            dismiss()
-          }
+          Button("Cancel") { dismiss() }
         }
         ToolbarItem(placement: .navigationBarTrailing) {
           Button("Save") {
@@ -139,34 +99,41 @@ struct SettingsView: View {
       .onAppear {
         loadCurrentValues()
       }
+      .sheet(item: $profileSheet) { sheet in
+        switch sheet {
+        case .switchUser:
+          SwitchProfileSheet()
+        case .addProfile:
+          CreateProfileView { profileSheet = nil }
+        case .editProfile(let profile):
+          EditProfileView(profile: profile) { profileSheet = nil }
+        case .changePin(let profile):
+          ChangePINSheet(profile: profile) { profileSheet = nil }
+        }
+      }
     }
   }
 
   private func loadCurrentValues() {
-    geminiAPIKey = settings.geminiAPIKey
-    geminiSystemPrompt = settings.geminiSystemPrompt
-    openClawHost = settings.openClawHost
-    openClawPort = String(settings.openClawPort)
-    openClawHookToken = settings.openClawHookToken
-    openClawGatewayToken = settings.openClawGatewayToken
+    openClawDeviceId = resolveOpenClawDeviceId()
     webrtcSignalingURL = settings.webrtcSignalingURL
-    speakerOutputEnabled = settings.speakerOutputEnabled
-    videoStreamingEnabled = settings.videoStreamingEnabled
+    showLiveButton = settings.showLiveButton
     proactiveNotificationsEnabled = settings.proactiveNotificationsEnabled
   }
 
-  private func save() {
-    settings.geminiAPIKey = geminiAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
-    settings.geminiSystemPrompt = geminiSystemPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
-    settings.openClawHost = openClawHost.trimmingCharacters(in: .whitespacesAndNewlines)
-    if let port = Int(openClawPort.trimmingCharacters(in: .whitespacesAndNewlines)) {
-      settings.openClawPort = port
+  private func resolveOpenClawDeviceId() -> String {
+    guard let keyData = KeychainService.load(account: "openclaw-signing-key"),
+          let key = try? Curve25519.Signing.PrivateKey(rawRepresentation: keyData) else {
+      return ""
     }
-    settings.openClawHookToken = openClawHookToken.trimmingCharacters(in: .whitespacesAndNewlines)
-    settings.openClawGatewayToken = openClawGatewayToken.trimmingCharacters(in: .whitespacesAndNewlines)
+    return SHA256.hash(data: key.publicKey.rawRepresentation)
+      .map { String(format: "%02x", $0) }
+      .joined()
+  }
+
+  private func save() {
     settings.webrtcSignalingURL = webrtcSignalingURL.trimmingCharacters(in: .whitespacesAndNewlines)
-    settings.speakerOutputEnabled = speakerOutputEnabled
-    settings.videoStreamingEnabled = videoStreamingEnabled
+    settings.showLiveButton = showLiveButton
     settings.proactiveNotificationsEnabled = proactiveNotificationsEnabled
   }
 }

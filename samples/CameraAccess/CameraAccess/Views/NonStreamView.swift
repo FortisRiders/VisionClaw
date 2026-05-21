@@ -20,6 +20,8 @@ import SwiftUI
 struct NonStreamView: View {
   @ObservedObject var viewModel: StreamSessionViewModel
   @ObservedObject var wearablesVM: WearablesViewModel
+  @Binding var showJarvisPanel: Bool
+  var onProfileTap: () -> Void = {}
   @State private var sheetHeight: CGFloat = 300
   @State private var showSettings = false
 
@@ -29,7 +31,18 @@ struct NonStreamView: View {
 
       VStack {
         HStack {
+          ActiveProfileBadge(onTap: onProfileTap)
           Spacer()
+          Button {
+            withAnimation(.easeInOut(duration: 0.3)) { showJarvisPanel = true }
+          } label: {
+            Image(systemName: "j.circle")
+              .resizable()
+              .aspectRatio(contentMode: .fit)
+              .foregroundColor(.white)
+              .frame(width: 24, height: 24)
+          }
+          .padding(.trailing, 8)
           Menu {
             Button("Settings") {
               showSettings = true

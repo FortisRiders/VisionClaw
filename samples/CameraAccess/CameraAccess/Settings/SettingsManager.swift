@@ -6,31 +6,15 @@ final class SettingsManager {
   private let defaults = UserDefaults.standard
 
   private enum Key: String {
-    case geminiAPIKey
     case openClawHost
     case openClawPort
-    case openClawHookToken
     case openClawGatewayToken
-    case geminiSystemPrompt
     case webrtcSignalingURL
-    case speakerOutputEnabled
-    case videoStreamingEnabled
     case proactiveNotificationsEnabled
+    case showLiveButton
   }
 
   private init() {}
-
-  // MARK: - Gemini
-
-  var geminiAPIKey: String {
-    get { defaults.string(forKey: Key.geminiAPIKey.rawValue) ?? Secrets.geminiAPIKey }
-    set { defaults.set(newValue, forKey: Key.geminiAPIKey.rawValue) }
-  }
-
-  var geminiSystemPrompt: String {
-    get { defaults.string(forKey: Key.geminiSystemPrompt.rawValue) ?? GeminiConfig.defaultSystemInstruction }
-    set { defaults.set(newValue, forKey: Key.geminiSystemPrompt.rawValue) }
-  }
 
   // MARK: - OpenClaw
 
@@ -47,11 +31,6 @@ final class SettingsManager {
     set { defaults.set(newValue, forKey: Key.openClawPort.rawValue) }
   }
 
-  var openClawHookToken: String {
-    get { defaults.string(forKey: Key.openClawHookToken.rawValue) ?? Secrets.openClawHookToken }
-    set { defaults.set(newValue, forKey: Key.openClawHookToken.rawValue) }
-  }
-
   var openClawGatewayToken: String {
     get { defaults.string(forKey: Key.openClawGatewayToken.rawValue) ?? Secrets.openClawGatewayToken }
     set { defaults.set(newValue, forKey: Key.openClawGatewayToken.rawValue) }
@@ -64,18 +43,11 @@ final class SettingsManager {
     set { defaults.set(newValue, forKey: Key.webrtcSignalingURL.rawValue) }
   }
 
-  // MARK: - Audio
+  // MARK: - Live Button
 
-  var speakerOutputEnabled: Bool {
-    get { defaults.bool(forKey: Key.speakerOutputEnabled.rawValue) }
-    set { defaults.set(newValue, forKey: Key.speakerOutputEnabled.rawValue) }
-  }
-
-  // MARK: - Video
-
-  var videoStreamingEnabled: Bool {
-    get { defaults.object(forKey: Key.videoStreamingEnabled.rawValue) as? Bool ?? true }
-    set { defaults.set(newValue, forKey: Key.videoStreamingEnabled.rawValue) }
+  var showLiveButton: Bool {
+    get { defaults.bool(forKey: Key.showLiveButton.rawValue) }
+    set { defaults.set(newValue, forKey: Key.showLiveButton.rawValue) }
   }
 
   // MARK: - Notifications
@@ -88,10 +60,8 @@ final class SettingsManager {
   // MARK: - Reset
 
   func resetAll() {
-    for key in [Key.geminiAPIKey, .geminiSystemPrompt, .openClawHost, .openClawPort,
-                .openClawHookToken, .openClawGatewayToken, .webrtcSignalingURL,
-                .speakerOutputEnabled, .videoStreamingEnabled,
-                .proactiveNotificationsEnabled] {
+    for key in [Key.openClawHost, .openClawPort, .openClawGatewayToken,
+                .webrtcSignalingURL, .showLiveButton, .proactiveNotificationsEnabled] {
       defaults.removeObject(forKey: key.rawValue)
     }
   }

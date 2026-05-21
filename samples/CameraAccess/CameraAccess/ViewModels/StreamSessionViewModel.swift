@@ -67,6 +67,9 @@ class StreamSessionViewModel: ObservableObject {
   // WebRTC Live streaming integration
   var webrtcSessionVM: WebRTCSessionViewModel?
 
+  // Jarvis voice session — used to report live-mode state in background notifications
+  weak var jarvisSessionVM: JarvisVoiceSession?
+
   // The core DAT SDK StreamSession - handles all streaming operations
   private var streamSession: StreamSession
   // Listener tokens are used to manage DAT SDK event subscriptions
@@ -84,8 +87,11 @@ class StreamSessionViewModel: ObservableObject {
   // VideoDecoder for decompressing HEVC/H.264 frames in background
   private let videoDecoder = VideoDecoder()
   private var backgroundFrameCount = 0
-  private var bgDiagLogged = false
 
+  // Rolling 15-second frame buffer at 1fps for Jarvis vision queries
+  private var jarvisFrameBuffer: [UIImage] = []
+  private var lastBufferedFrameTime: Date = .distantPast
+  private let maxBufferFrames = 15
   init(wearables: WearablesInterface) {
     self.wearables = wearables
     // Let the SDK auto-select from available devices
@@ -105,6 +111,40 @@ class StreamSessionViewModel: ObservableObject {
 
     setupVideoDecoder()
     attachListeners()
+    observeAppTermination()
+  }
+
+  private func observeAppTermination() {
+    NotificationCenter.default.addObserver(
+      forName: UIApplication.didEnterBackgroundNotification,
+      object: nil,
+      queue: .main
+    ) { [weak self] _ in
+      guard let self else {
+        NSLog("[Notify] didEnterBackground — self is nil, skipping")
+        return
+      }
+      NSLog("[Notify] didEnterBackground — streamingStatus=%@ jarvisLive=%@",
+            String(describing: self.streamingStatus),
+            self.jarvisSessionVM?.isLiveModeActive == true ? "YES" : "NO")
+      guard self.streamingStatus != .stopped else {
+        NSLog("[Notify] didEnterBackground — not streaming, skipping notification")
+        return
+      }
+      let jarvisLive = self.jarvisSessionVM?.isLiveModeActive ?? false
+      NotificationManager.shared.sendSessionActiveInBackground(jarvisLive: jarvisLive)
+    }
+
+    NotificationCenter.default.addObserver(
+      forName: UIApplication.willTerminateNotification,
+      object: nil,
+      queue: .main
+    ) { [weak self] _ in
+      NSLog("[Notify] willTerminate — streamingStatus=%@",
+            String(describing: self?.streamingStatus))
+      guard let self, self.streamingStatus != .stopped else { return }
+      NotificationManager.shared.sendStreamEnded()
+    }
   }
 
   private func setupVideoDecoder() {
@@ -118,11 +158,16 @@ class StreamSessionViewModel: ObservableObject {
         let rect = CGRect(x: 0, y: 0, width: width, height: height)
         if let cgImage = self.cpuCIContext.createCGImage(ciImage, from: rect) {
           let image = UIImage(cgImage: cgImage)
-          self.geminiSessionVM?.sendVideoFrameIfThrottled(image: image)
-          self.webrtcSessionVM?.pushVideoFrame(image)
+          let toGemini = self.geminiSessionVM?.isGeminiActive == true
+          let toWebRTC = self.webrtcSessionVM?.isActive == true
+          if toGemini { self.geminiSessionVM?.sendVideoFrameIfThrottled(image: image) }
+          if toWebRTC { self.webrtcSessionVM?.pushVideoFrame(image) }
+          self.bufferFrameIfNeeded(image)
           if self.backgroundFrameCount <= 5 || self.backgroundFrameCount % 120 == 0 {
-            NSLog("[Stream] Background frame #%d decoded and forwarded (%dx%d)",
-                  self.backgroundFrameCount, width, height)
+            NSLog("[FrameRoute] BG frame #%d → Gemini:%@ WebRTC:%@ JarvisBuffer:%d (%dx%d)",
+                  self.backgroundFrameCount,
+                  toGemini ? "YES" : "no", toWebRTC ? "YES" : "no",
+                  self.jarvisFrameBuffer.count, width, height)
           }
         }
       }
@@ -147,6 +192,7 @@ class StreamSessionViewModel: ObservableObject {
     // Subscribe to session state changes using the DAT SDK listener pattern
     stateListenerToken = streamSession.statePublisher.listen { [weak self] state in
       Task { @MainActor [weak self] in
+        NSLog("[Stream] State → %@", String(describing: state))
         self?.updateStatusFromState(state)
       }
     }
@@ -162,14 +208,21 @@ class StreamSessionViewModel: ObservableObject {
 
         if !isInBackground {
           self.backgroundFrameCount = 0
-          self.bgDiagLogged = false
           if let image = videoFrame.makeUIImage() {
             self.currentVideoFrame = image
             if !self.hasReceivedFirstFrame {
               self.hasReceivedFirstFrame = true
+              NSLog("[FrameRoute] First glasses frame received")
             }
-            self.geminiSessionVM?.sendVideoFrameIfThrottled(image: image)
-            self.webrtcSessionVM?.pushVideoFrame(image)
+            let toGemini = self.geminiSessionVM?.isGeminiActive == true
+            let toWebRTC = self.webrtcSessionVM?.isActive == true
+            if toGemini { self.geminiSessionVM?.sendVideoFrameIfThrottled(image: image) }
+            if toWebRTC { self.webrtcSessionVM?.pushVideoFrame(image) }
+            self.bufferFrameIfNeeded(image)
+            if toGemini || toWebRTC {
+              NSLog("[FrameRoute] FG frame → Gemini:%@ WebRTC:%@ JarvisBuffer:%d",
+                    toGemini ? "YES" : "no", toWebRTC ? "YES" : "no", self.jarvisFrameBuffer.count)
+            }
           }
         } else {
           // In background: makeUIImage() uses VideoToolbox GPU rendering which iOS suspends.
@@ -198,8 +251,12 @@ class StreamSessionViewModel: ObservableObject {
             let rect = CGRect(x: 0, y: 0, width: width, height: height)
             if let cgImage = self.cpuCIContext.createCGImage(ciImage, from: rect) {
               let image = UIImage(cgImage: cgImage)
-              self.geminiSessionVM?.sendVideoFrameIfThrottled(image: image)
-              self.webrtcSessionVM?.pushVideoFrame(image)
+              let toGemini = self.geminiSessionVM?.isGeminiActive == true
+              let toWebRTC = self.webrtcSessionVM?.isActive == true
+              if toGemini { self.geminiSessionVM?.sendVideoFrameIfThrottled(image: image) }
+              if toWebRTC { self.webrtcSessionVM?.pushVideoFrame(image) }
+              NSLog("[FrameRoute] BG raw pixel → Gemini:%@ WebRTC:%@ (%dx%d)",
+                    toGemini ? "YES" : "no", toWebRTC ? "YES" : "no", width, height)
             }
             self.videoDecoder.invalidateSession()
           }
@@ -211,6 +268,7 @@ class StreamSessionViewModel: ObservableObject {
     errorListenerToken = streamSession.errorPublisher.listen { [weak self] error in
       Task { @MainActor [weak self] in
         guard let self else { return }
+        NSLog("[Stream] SDK error: %@", String(describing: error))
         // Suppress device-not-found errors when user hasn't started streaming yet
         if self.streamingStatus == .stopped {
           if case .deviceNotConnected = error { return }
@@ -238,26 +296,33 @@ class StreamSessionViewModel: ObservableObject {
   }
 
   func handleStartStreaming() async {
+    NotificationManager.shared.requestPermission()
     let permission = Permission.camera
+    NSLog("[Stream] Checking camera permission, hasActiveDevice=%@", hasActiveDevice ? "true" : "false")
     do {
       let status = try await wearables.checkPermissionStatus(permission)
+      NSLog("[Stream] Permission status: %@", String(describing: status))
       if status == .granted {
         await startSession()
         return
       }
       let requestStatus = try await wearables.requestPermission(permission)
+      NSLog("[Stream] Permission request result: %@", String(describing: requestStatus))
       if requestStatus == .granted {
         await startSession()
         return
       }
       showError("Permission denied")
     } catch {
+      NSLog("[Stream] Permission check error: %@", error.description)
       showError("Permission error: \(error.description)")
     }
   }
 
   func startSession() async {
+    NSLog("[Stream] Calling streamSession.start(), current state: %@", String(describing: streamSession.state))
     await streamSession.start()
+    NSLog("[Stream] streamSession.start() returned, state now: %@", String(describing: streamSession.state))
   }
 
   private func showError(_ message: String) {
@@ -296,6 +361,7 @@ class StreamSessionViewModel: ObservableObject {
         }
         self.geminiSessionVM?.sendVideoFrameIfThrottled(image: image)
         self.webrtcSessionVM?.pushVideoFrame(image)
+        self.bufferFrameIfNeeded(image)
       }
     }
     camera.start()
@@ -311,6 +377,7 @@ class StreamSessionViewModel: ObservableObject {
     hasReceivedFirstFrame = false
     streamingStatus = .stopped
     streamingMode = .glasses
+    jarvisFrameBuffer = []
     NSLog("[Stream] iPhone camera mode stopped")
   }
 
@@ -328,11 +395,37 @@ class StreamSessionViewModel: ObservableObject {
     capturedPhoto = nil
   }
 
+  // Returns up to `count` frames sampled evenly from the rolling buffer.
+  // Returns empty array if streaming hasn't started or buffer is empty.
+  func recentFrames(count: Int = 4) -> [UIImage] {
+    guard !jarvisFrameBuffer.isEmpty else { return [] }
+    let buf = jarvisFrameBuffer
+    guard buf.count > count else { return buf }
+    let step = Double(buf.count) / Double(count)
+    return (0..<count).map { buf[Int(Double($0) * step)] }
+  }
+
+  private func bufferFrameIfNeeded(_ image: UIImage) {
+    let now = Date()
+    guard now.timeIntervalSince(lastBufferedFrameTime) >= 1.0 else { return }
+    lastBufferedFrameTime = now
+    jarvisFrameBuffer.append(image)
+    if jarvisFrameBuffer.count > maxBufferFrames {
+      jarvisFrameBuffer.removeFirst()
+    }
+    NSLog("[FrameRoute] Jarvis buffer updated: %d/%d frames", jarvisFrameBuffer.count, maxBufferFrames)
+  }
+
   private func updateStatusFromState(_ state: StreamSessionState) {
     switch state {
     case .stopped:
+      let wasActive = streamingStatus != .stopped
       currentVideoFrame = nil
       streamingStatus = .stopped
+      jarvisFrameBuffer = []
+      if wasActive && UIApplication.shared.applicationState != .active {
+        NotificationManager.shared.sendStreamEnded()
+      }
     case .waitingForDevice, .starting, .stopping, .paused:
       streamingStatus = .waiting
     case .streaming:
