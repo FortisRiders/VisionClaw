@@ -20,6 +20,7 @@ import SwiftUI
 struct MainAppView: View {
   let wearables: WearablesInterface
   @ObservedObject private var viewModel: WearablesViewModel
+  @ObservedObject private var profileManager = ProfileManager.shared
 
   init(wearables: WearablesInterface, viewModel: WearablesViewModel) {
     self.wearables = wearables
@@ -27,11 +28,21 @@ struct MainAppView: View {
   }
 
   var body: some View {
-    if viewModel.registrationState == .registered || viewModel.hasMockDevice || viewModel.skipToIPhoneMode {
+    if !profileManager.isUnlocked {
+      profileGate
+    } else if viewModel.registrationState == .registered || viewModel.hasMockDevice || viewModel.skipToIPhoneMode {
       StreamSessionView(wearables: wearables, wearablesVM: viewModel)
     } else {
-      // User not registered - show registration/onboarding flow
       HomeScreenView(viewModel: viewModel)
+    }
+  }
+
+  @ViewBuilder
+  private var profileGate: some View {
+    if profileManager.hasProfiles {
+      ProfileGateView()
+    } else {
+      CreateProfileView()
     }
   }
 }
