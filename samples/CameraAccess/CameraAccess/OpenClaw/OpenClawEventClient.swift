@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 class OpenClawEventClient {
@@ -9,6 +10,23 @@ class OpenClawEventClient {
   private var shouldReconnect = false
   private var reconnectDelay: TimeInterval = 2
   private let maxReconnectDelay: TimeInterval = 30
+
+  private let clientId = "node-host"
+
+  // MARK: - Device Identity (derived from public key, stable via Keychain)
+
+  private lazy var signingKey: Curve25519.Signing.PrivateKey = {
+    loadOrCreateSigningKey()
+  }()
+
+  // Device ID = SHA-256 hex of the raw 32-byte public key.
+  // Gateway derives this independently and uses it to verify identity.
+  private lazy var deviceId: String = {
+    let raw = signingKey.publicKey.rawRepresentation
+    return SHA256.hash(data: raw)
+      .map { String(format: "%02x", $0) }
+      .joined()
+  }()
 
   func connect() {
     guard GeminiConfig.isOpenClawConfigured else {
@@ -104,7 +122,9 @@ class OpenClawEventClient {
 
     switch event {
     case "connect.challenge":
-      sendConnectHandshake()
+      let nonce = payload["nonce"] as? String ?? ""
+      NSLog("[OpenClawWS] Got challenge, nonce: %@", String(nonce.prefix(16)))
+      sendConnectHandshake(nonce: nonce)
 
     case "heartbeat":
       handleHeartbeatEvent(payload)
@@ -117,7 +137,47 @@ class OpenClawEventClient {
     }
   }
 
-  private func sendConnectHandshake() {
+  private func sendConnectHandshake(nonce: String) {
+    let rawPubKey = signingKey.publicKey.rawRepresentation
+    let pubKeyBase64url = base64url(rawPubKey)
+    let signedAtMs = Int(Date().timeIntervalSince1970 * 1000)
+    let token = GeminiConfig.openClawGatewayToken
+    let devId = deviceId
+
+    // v3 pipe-separated payload — field order must match exactly
+    let signaturePayload = [
+      "v3",
+      devId,          // SHA-256 hex of raw pubkey
+      clientId,       // "node-host"
+      "node",         // clientMode
+      "node",         // role
+      "",             // scopes (empty array joined by comma)
+      String(signedAtMs),
+      token,
+      nonce,
+      "ios",
+      "mobile"
+    ].joined(separator: "|")
+
+    NSLog("[OpenClawWS] Sending handshake, deviceId: %@", devId)
+
+    guard let payloadData = signaturePayload.data(using: .utf8) else {
+      NSLog("[OpenClawWS] Failed to encode signature payload")
+      return
+    }
+
+    let signatureBase64url: String
+    do {
+      let sig = try signingKey.signature(for: payloadData)
+      let sigData = sig.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) -> Data in
+        Data(bytes: ptr.baseAddress!, count: ptr.count)
+      }
+      signatureBase64url = base64url(sigData)
+    } catch {
+      NSLog("[OpenClawWS] Signing failed: %@", error.localizedDescription)
+      return
+    }
+
     let connectMsg: [String: Any] = [
       "type": "req",
       "id": UUID().uuidString,
@@ -126,11 +186,19 @@ class OpenClawEventClient {
         "minProtocol": 3,
         "maxProtocol": 3,
         "client": [
-          "id": "ios-node",
+          "id": clientId,
           "displayName": "VisionClaw Glass",
           "version": "1.0",
           "platform": "ios",
+          "deviceFamily": "mobile",
           "mode": "node"
+        ],
+        "device": [
+          "id": devId,
+          "publicKey": pubKeyBase64url,
+          "signature": signatureBase64url,
+          "signedAt": signedAtMs,
+          "nonce": nonce
         ],
         "role": "node",
         "scopes": [] as [String],
@@ -138,13 +206,14 @@ class OpenClawEventClient {
         "commands": [] as [String],
         "permissions": [:] as [String: Any],
         "auth": [
-          "token": GeminiConfig.openClawGatewayToken
+          "token": token
         ]
       ] as [String: Any]
     ]
 
     guard let data = try? JSONSerialization.data(withJSONObject: connectMsg),
           let string = String(data: data, encoding: .utf8) else { return }
+
     webSocketTask?.send(.string(string)) { error in
       if let error {
         NSLog("[OpenClawWS] Handshake send error: %@", error.localizedDescription)
@@ -154,7 +223,6 @@ class OpenClawEventClient {
 
   private func handleHeartbeatEvent(_ payload: [String: Any]) {
     let status = payload["status"] as? String ?? ""
-    // Only notify if there's actual content (not empty/silent heartbeats)
     guard status == "sent", let preview = payload["preview"] as? String, !preview.isEmpty else {
       return
     }
@@ -187,5 +255,29 @@ class OpenClawEventClient {
       self.reconnectDelay = min(self.reconnectDelay * 2, self.maxReconnectDelay)
       self.establishConnection()
     }
+  }
+
+  // MARK: - Keychain key management
+
+  private func loadOrCreateSigningKey() -> Curve25519.Signing.PrivateKey {
+    let account = "openclaw-signing-key"
+
+    if let keyData = KeychainService.load(account: account),
+       let key = try? Curve25519.Signing.PrivateKey(rawRepresentation: keyData) {
+      NSLog("[OpenClawWS] Loaded existing signing key from Keychain")
+      return key
+    }
+
+    let newKey = Curve25519.Signing.PrivateKey()
+    KeychainService.save(newKey.rawRepresentation, account: account)
+    NSLog("[OpenClawWS] Created new signing key and saved to Keychain")
+    return newKey
+  }
+
+  private func base64url(_ data: Data) -> String {
+    data.base64EncodedString()
+      .replacingOccurrences(of: "+", with: "-")
+      .replacingOccurrences(of: "/", with: "_")
+      .replacingOccurrences(of: "=", with: "")
   }
 }
