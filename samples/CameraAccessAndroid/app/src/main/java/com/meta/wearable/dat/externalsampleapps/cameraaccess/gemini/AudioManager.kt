@@ -77,19 +77,14 @@ class AudioManager {
 
         captureThread = Thread({
             val buffer = ByteArray(bufferSize)
-            var tapCount = 0
             while (isCapturing) {
                 val read = audioRecord?.read(buffer, 0, buffer.size) ?: break
                 if (read > 0) {
-                    tapCount++
                     synchronized(accumulateLock) {
                         accumulatedData.write(buffer, 0, read)
                         if (accumulatedData.size() >= MIN_SEND_BYTES) {
                             val chunk = accumulatedData.toByteArray()
                             accumulatedData.reset()
-                            if (tapCount <= 3) {
-                                Log.d(TAG, "Sending chunk: ${chunk.size} bytes (~${chunk.size / 32}ms)")
-                            }
                             onAudioCaptured?.invoke(chunk)
                         }
                     }

@@ -27,9 +27,6 @@ object GeminiConfig {
     val openClawPort: Int
         get() = SettingsManager.openClawPort
 
-    val openClawHookToken: String
-        get() = SettingsManager.openClawHookToken
-
     val openClawGatewayToken: String
         get() = SettingsManager.openClawGatewayToken
 

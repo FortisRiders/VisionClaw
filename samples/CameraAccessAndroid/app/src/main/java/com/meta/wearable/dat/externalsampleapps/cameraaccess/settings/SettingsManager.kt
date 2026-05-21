@@ -32,10 +32,6 @@ object SettingsManager {
         }
         set(value) = prefs.edit().putInt("openClawPort", value).apply()
 
-    var openClawHookToken: String
-        get() = prefs.getString("openClawHookToken", null) ?: Secrets.openClawHookToken
-        set(value) = prefs.edit().putString("openClawHookToken", value).apply()
-
     var openClawGatewayToken: String
         get() = prefs.getString("openClawGatewayToken", null) ?: Secrets.openClawGatewayToken
         set(value) = prefs.edit().putString("openClawGatewayToken", value).apply()

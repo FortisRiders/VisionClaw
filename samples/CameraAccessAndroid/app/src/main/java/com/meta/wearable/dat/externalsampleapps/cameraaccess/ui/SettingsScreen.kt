@@ -46,7 +46,6 @@ fun SettingsScreen(
     var systemPrompt by remember { mutableStateOf(SettingsManager.geminiSystemPrompt) }
     var openClawHost by remember { mutableStateOf(SettingsManager.openClawHost) }
     var openClawPort by remember { mutableStateOf(SettingsManager.openClawPort.toString()) }
-    var openClawHookToken by remember { mutableStateOf(SettingsManager.openClawHookToken) }
     var openClawGatewayToken by remember { mutableStateOf(SettingsManager.openClawGatewayToken) }
     var webrtcSignalingURL by remember { mutableStateOf(SettingsManager.webrtcSignalingURL) }
     var videoStreamingEnabled by remember { mutableStateOf(SettingsManager.videoStreamingEnabled) }
@@ -58,7 +57,6 @@ fun SettingsScreen(
         SettingsManager.geminiSystemPrompt = systemPrompt.trim()
         SettingsManager.openClawHost = openClawHost.trim()
         openClawPort.trim().toIntOrNull()?.let { SettingsManager.openClawPort = it }
-        SettingsManager.openClawHookToken = openClawHookToken.trim()
         SettingsManager.openClawGatewayToken = openClawGatewayToken.trim()
         SettingsManager.webrtcSignalingURL = webrtcSignalingURL.trim()
         SettingsManager.videoStreamingEnabled = videoStreamingEnabled
@@ -70,7 +68,6 @@ fun SettingsScreen(
         systemPrompt = SettingsManager.geminiSystemPrompt
         openClawHost = SettingsManager.openClawHost
         openClawPort = SettingsManager.openClawPort.toString()
-        openClawHookToken = SettingsManager.openClawHookToken
         openClawGatewayToken = SettingsManager.openClawGatewayToken
         webrtcSignalingURL = SettingsManager.webrtcSignalingURL
         videoStreamingEnabled = SettingsManager.videoStreamingEnabled
@@ -131,12 +128,6 @@ fun SettingsScreen(
                 label = "Port",
                 placeholder = "18789",
                 keyboardType = KeyboardType.Number,
-            )
-            MonoTextField(
-                value = openClawHookToken,
-                onValueChange = { openClawHookToken = it },
-                label = "Hook Token",
-                placeholder = "Hook token",
             )
             MonoTextField(
                 value = openClawGatewayToken,
