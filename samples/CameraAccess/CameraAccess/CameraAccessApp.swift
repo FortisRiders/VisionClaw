@@ -15,7 +15,6 @@
 // of DAT SDK integration including device registration, permissions, and media streaming.
 //
 
-import Foundation
 import MWDATCore
 import SwiftUI
 
@@ -25,14 +24,14 @@ import MWDATMockDevice
 
 @main
 struct CameraAccessApp: App {
-  #if canImport(MWDATMockDevice)
-  // Debug menu for simulating device connections during development
+  #if DEBUG && canImport(MWDATMockDevice) && targetEnvironment(simulator)
   @StateObject private var debugMenuViewModel = DebugMenuViewModel(mockDeviceKit: MockDeviceKit.shared)
   #endif
   private let wearables: WearablesInterface
   @StateObject private var wearablesViewModel: WearablesViewModel
 
   init() {
+    _ = NotificationManager.shared
     do {
       try Wearables.configure()
     } catch {
@@ -58,7 +57,7 @@ struct CameraAccessApp: App {
         } message: {
           Text(wearablesViewModel.errorMessage)
         }
-        #if canImport(MWDATMockDevice)
+        #if DEBUG && canImport(MWDATMockDevice) && targetEnvironment(simulator)
       .sheet(isPresented: $debugMenuViewModel.showDebugMenu) {
         MockDeviceKitView(viewModel: debugMenuViewModel.mockDeviceKitViewModel)
       }
