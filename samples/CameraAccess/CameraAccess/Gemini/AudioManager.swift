@@ -4,6 +4,7 @@ import UIKit
 
 class AudioManager {
   var onAudioCaptured: ((Data) -> Void)?
+  var pttAudioConsumer: ((AVAudioPCMBuffer) -> Void)?
 
   private let audioEngine = AVAudioEngine()
   private let playerNode = AVAudioPlayerNode()
@@ -36,30 +37,11 @@ class AudioManager {
   func setupAudioSession(useIPhoneMode: Bool = false) throws {
     self.useIPhoneMode = useIPhoneMode
     let session = AVAudioSession.sharedInstance()
-    // voiceChat: aggressive echo cancellation (mic + speaker co-located on phone)
-    // videoChat: mild AEC (mic on glasses, speaker on glasses)
-    // When Speaker Output is ON, speaker is on phone so always use voiceChat AEC
-    let forceSpeaker = SettingsManager.shared.speakerOutputEnabled
-    if useIPhoneMode || forceSpeaker {
-      try session.setCategory(
-        .playAndRecord,
-        mode: .voiceChat,
-        options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers]
-      )
-    } else {
-      try session.setCategory(
-        .playAndRecord,
-        mode: .videoChat,
-        options: [.allowBluetoothHFP, .mixWithOthers, .defaultToSpeaker]
-      )
-    }
+    // voiceChatPhone: aggressive AEC (mic + speaker co-located on phone)
+    // voiceChatGlasses: mild AEC (mic on glasses, speaker on glasses)
+    try AudioSessionController.shared.activate(useIPhoneMode ? .voiceChatPhone : .voiceChatGlasses)
     try session.setPreferredSampleRate(GeminiConfig.inputAudioSampleRate)
     try session.setPreferredIOBufferDuration(0.064)
-    try session.setActive(true)
-    if SettingsManager.shared.speakerOutputEnabled {
-      try session.overrideOutputAudioPort(.speaker)
-      NSLog("[Audio] Speaker output override: ON (iPhone speaker)")
-    }
     NSLog("[Audio] Session mode: %@", useIPhoneMode ? "voiceChat (iPhone)" : "videoChat (glasses)")
 
     setupInterruptionHandling()
@@ -106,11 +88,11 @@ class AudioManager {
       converter = AVAudioConverter(from: inputNativeFormat, to: resampleFormat)
     }
 
-    var tapCount = 0
     inputNode.installTap(onBus: 0, bufferSize: 4096, format: inputNativeFormat) { [weak self] buffer, _ in
       guard let self else { return }
 
-      tapCount += 1
+      self.pttAudioConsumer?(buffer)
+
       let pcmData: Data
 
       if let converter {
@@ -121,7 +103,7 @@ class AudioManager {
           interleaved: false
         )!
         guard let resampled = self.convertBuffer(buffer, using: converter, targetFormat: resampleFormat) else {
-          if tapCount <= 3 { NSLog("[Audio] Resample failed for tap #%d", tapCount) }
+          NSLog("[Audio] Resample failed")
           return
         }
         pcmData = self.float32BufferToInt16Data(resampled)
@@ -135,10 +117,6 @@ class AudioManager {
         if self.accumulatedData.count >= self.minSendBytes {
           let chunk = self.accumulatedData
           self.accumulatedData = Data()
-          if tapCount <= 3 {
-            NSLog("[Audio] Sending chunk: %d bytes (~%dms)",
-                  chunk.count, chunk.count / 32)  // 16kHz * 2 bytes = 32 bytes/ms
-          }
           self.onAudioCaptured?(chunk)
         }
       }
@@ -300,9 +278,8 @@ class AudioManager {
 
   private func resumeAudioAfterInterruption() {
     NSLog("[Audio] Resuming audio after interruption")
-    let audioSession = AVAudioSession.sharedInstance()
     do {
-      try audioSession.setActive(true)
+      try AudioSessionController.shared.activate(useIPhoneMode ? .voiceChatPhone : .voiceChatGlasses)
       try audioEngine.start()
       NSLog("[Audio] Audio resumed successfully")
     } catch {
@@ -352,17 +329,6 @@ class AudioManager {
   }
 
   // MARK: - Private helpers
-
-  private func computeRMS(_ buffer: AVAudioPCMBuffer) -> Float {
-    let frameCount = Int(buffer.frameLength)
-    guard frameCount > 0, let floatData = buffer.floatChannelData else { return 0 }
-    var sumSquares: Float = 0
-    for i in 0..<frameCount {
-      let s = floatData[0][i]
-      sumSquares += s * s
-    }
-    return sqrt(sumSquares / Float(frameCount))
-  }
 
   private func float32BufferToInt16Data(_ buffer: AVAudioPCMBuffer) -> Data {
     let frameCount = Int(buffer.frameLength)
