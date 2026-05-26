@@ -78,4 +78,8 @@ dependencies {
   androidTestImplementation(libs.androidx.ui.test.junit4)
   androidTestImplementation(libs.androidx.test.uiautomator)
   androidTestImplementation(libs.androidx.test.rules)
+  testImplementation("junit:junit:4.13.2")
+  testImplementation("org.mockito:mockito-core:5.5.0")
+  testImplementation("org.mockito.kotlin:mockito-kotlin:5.1.0")
+  testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
 }
