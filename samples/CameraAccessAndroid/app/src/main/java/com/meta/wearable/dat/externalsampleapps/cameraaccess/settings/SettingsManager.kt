@@ -48,6 +48,29 @@ object SettingsManager {
         get() = prefs.getBoolean("proactiveNotificationsEnabled", true)
         set(value) = prefs.edit().putBoolean("proactiveNotificationsEnabled", value).apply()
 
+    var highQualityVoiceEnabled: Boolean
+        get() = prefs.getBoolean("highQualityVoiceEnabled", true)
+        set(value) = prefs.edit().putBoolean("highQualityVoiceEnabled", value).apply()
+
+    var activeAgentId: String
+        get() = prefs.getString("activeAgentId", "main") ?: "main"
+        set(value) = prefs.edit().putString("activeAgentId", value).apply()
+
+    var activeChatId: String
+        get() = prefs.getString("activeChatId", "main") ?: "main"
+        set(value) = prefs.edit().putString("activeChatId", value).apply()
+
+    fun saveChatList(json: String) = prefs.edit().putString("jarvis.chats", json).apply()
+    fun loadChatList(): String? = prefs.getString("jarvis.chats", null)
+
+    fun saveChatMessages(chatId: String, json: String) =
+        prefs.edit().putString("jarvis.chat.messages.$chatId", json).apply()
+    fun loadChatMessages(chatId: String): String? =
+        prefs.getString("jarvis.chat.messages.$chatId", null)
+
+    fun deleteChatMessages(chatId: String) =
+        prefs.edit().remove("jarvis.chat.messages.$chatId").apply()
+
     fun resetAll() {
         prefs.edit().clear().apply()
     }

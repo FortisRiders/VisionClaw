@@ -1,11 +1,16 @@
 package com.meta.wearable.dat.externalsampleapps.cameraaccess.openclaw
 
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import com.meta.wearable.dat.externalsampleapps.cameraaccess.gemini.GeminiConfig
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -26,7 +31,8 @@ class OpenClawEventClient {
     private var isConnected = false
     private var shouldReconnect = false
     private var reconnectDelayMs = 2_000L
-    private val handler = Handler(Looper.getMainLooper())
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private var reconnectJob: Job? = null
 
     private val client = OkHttpClient.Builder()
         .readTimeout(0, TimeUnit.MILLISECONDS)
@@ -46,7 +52,8 @@ class OpenClawEventClient {
     fun disconnect() {
         shouldReconnect = false
         isConnected = false
-        handler.removeCallbacksAndMessages(null)
+        reconnectJob?.cancel()
+        reconnectJob = null
         webSocket?.close(1000, null)
         webSocket = null
         Log.d(TAG, "Disconnected")
@@ -131,7 +138,7 @@ class OpenClawEventClient {
                 put("maxProtocol", 3)
                 put("client", JSONObject().apply {
                     put("id", "android-node")
-                    put("displayName", "VisionClaw Glass")
+                    put("displayName", "Jarvis Glass")
                     put("version", "1.0")
                     put("platform", "android")
                     put("mode", "node")
@@ -181,12 +188,14 @@ class OpenClawEventClient {
 
     private fun scheduleReconnect() {
         if (!shouldReconnect) return
-        Log.d(TAG, "Reconnecting in ${reconnectDelayMs}ms")
-        handler.postDelayed({
+        reconnectJob?.cancel()
+        reconnectJob = scope.launch {
+            Log.d(TAG, "Reconnecting in ${reconnectDelayMs}ms")
+            delay(reconnectDelayMs)
             if (shouldReconnect) {
                 reconnectDelayMs = (reconnectDelayMs * 2).coerceAtMost(MAX_RECONNECT_DELAY_MS)
                 establishConnection()
             }
-        }, reconnectDelayMs)
+        }
     }
 }

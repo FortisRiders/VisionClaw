@@ -19,6 +19,7 @@ class OpenClawBridge {
     companion object {
         private const val TAG = "OpenClawBridge"
         private const val MAX_HISTORY_TURNS = 10
+        private const val DEFAULT_AGENT_ID = "main"
     }
 
     private val _lastToolCallStatus = MutableStateFlow<ToolCallStatus>(ToolCallStatus.Idle)
@@ -41,7 +42,9 @@ class OpenClawBridge {
         .connectTimeout(5, TimeUnit.SECONDS)
         .build()
 
-    private var sessionKey: String = "agent:main:glass"
+    private var _sessionKey: String = "agent:$DEFAULT_AGENT_ID:main"
+    val currentSessionKey: String get() = _sessionKey
+
     private val conversationHistory = mutableListOf<JSONObject>()
 
     suspend fun checkConnection() = withContext(Dispatchers.IO) {
@@ -78,8 +81,84 @@ class OpenClawBridge {
 
     fun resetSession() {
         conversationHistory.clear()
-        Log.d(TAG, "Session reset (key retained: $sessionKey)")
+        Log.d(TAG, "Session reset (key retained: $_sessionKey)")
     }
+
+    fun switchProfile() {
+        conversationHistory.clear()
+        _sessionKey = "agent:$DEFAULT_AGENT_ID:main"
+        Log.d(TAG, "Profile switched, session reset")
+    }
+
+    fun switchToSession(sessionKey: String, withHistory: List<Map<String, String>> = emptyList()) {
+        _sessionKey = sessionKey
+        conversationHistory.clear()
+        for (msg in withHistory) {
+            val role = msg["role"] ?: continue
+            val content = msg["content"] ?: continue
+            conversationHistory.add(JSONObject().apply {
+                put("role", role)
+                put("content", content)
+            })
+        }
+        Log.d(TAG, "Switched to session: $sessionKey, loaded ${conversationHistory.size} history messages")
+    }
+
+    suspend fun generateNewChatSessionKey(): String = withContext(Dispatchers.IO) {
+        val id = JarvisChat.makeId()
+        "agent:$DEFAULT_AGENT_ID:chat-$id"
+    }
+
+    suspend fun fetchSessionList(): List<String> = withContext(Dispatchers.IO) {
+        if (!GeminiConfig.isOpenClawConfigured) return@withContext emptyList()
+        try {
+            val url = "${GeminiConfig.openClawHost}:${GeminiConfig.openClawPort}/v1/sessions"
+            val request = Request.Builder()
+                .url(url)
+                .get()
+                .addHeader("Authorization", "Bearer ${GeminiConfig.openClawGatewayToken}")
+                .build()
+            val response = pingClient.newCall(request).execute()
+            val body = response.body?.string() ?: ""
+            response.close()
+            if (!response.isSuccessful) return@withContext emptyList()
+            val json = JSONObject(body)
+            val sessions = json.optJSONArray("sessions") ?: return@withContext emptyList()
+            (0 until sessions.length()).mapNotNull { sessions.optString(it).ifEmpty { null } }
+        } catch (e: Exception) {
+            Log.e(TAG, "fetchSessionList error: ${e.message}")
+            emptyList()
+        }
+    }
+
+    suspend fun fetchSessionHistory(sessionKey: String, limit: Int = 20): List<Map<String, String>> =
+        withContext(Dispatchers.IO) {
+            if (!GeminiConfig.isOpenClawConfigured) return@withContext emptyList()
+            try {
+                val encodedKey = java.net.URLEncoder.encode(sessionKey, "UTF-8")
+                val url = "${GeminiConfig.openClawHost}:${GeminiConfig.openClawPort}/v1/sessions/$encodedKey/history?limit=$limit"
+                val request = Request.Builder()
+                    .url(url)
+                    .get()
+                    .addHeader("Authorization", "Bearer ${GeminiConfig.openClawGatewayToken}")
+                    .build()
+                val response = pingClient.newCall(request).execute()
+                val body = response.body?.string() ?: ""
+                response.close()
+                if (!response.isSuccessful) return@withContext emptyList()
+                val json = JSONObject(body)
+                val messages = json.optJSONArray("messages") ?: return@withContext emptyList()
+                (0 until messages.length()).mapNotNull { i ->
+                    val msg = messages.optJSONObject(i) ?: return@mapNotNull null
+                    val role = msg.optString("role").ifEmpty { return@mapNotNull null }
+                    val content = msg.optString("content").ifEmpty { return@mapNotNull null }
+                    mapOf("role" to role, "content" to content)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "fetchSessionHistory error: ${e.message}")
+                emptyList()
+            }
+        }
 
     suspend fun delegateTask(
         task: String,
@@ -89,13 +168,11 @@ class OpenClawBridge {
 
         val url = "${GeminiConfig.openClawHost}:${GeminiConfig.openClawPort}/v1/chat/completions"
 
-        // Append user message
         conversationHistory.add(JSONObject().apply {
             put("role", "user")
             put("content", task)
         })
 
-        // Trim history
         if (conversationHistory.size > MAX_HISTORY_TURNS * 2) {
             val trimmed = conversationHistory.takeLast(MAX_HISTORY_TURNS * 2)
             conversationHistory.clear()
@@ -121,7 +198,7 @@ class OpenClawBridge {
                 .post(body.toString().toRequestBody("application/json".toMediaType()))
                 .addHeader("Authorization", "Bearer ${GeminiConfig.openClawGatewayToken}")
                 .addHeader("Content-Type", "application/json")
-                .addHeader("x-openclaw-session-key", sessionKey)
+                .addHeader("x-openclaw-session-key", _sessionKey)
                 .addHeader("x-openclaw-message-channel", "glass")
                 .build()
 
@@ -165,5 +242,4 @@ class OpenClawBridge {
             return@withContext ToolResult.Failure("Agent error: ${e.message}")
         }
     }
-
 }
