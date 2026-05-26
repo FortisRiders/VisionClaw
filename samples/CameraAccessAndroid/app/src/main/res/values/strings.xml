@@ -2,6 +2,7 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2" project="cameraaccess">
 
     <!-- Home Screen -->
+    <string name="app_name">Jarvis</string>
     <string name="register_button_title" description="Connect App">Connect my glasses</string>
     <string name="unregister_button_title" description="Disconnect App">Disconnect</string>
     <string name="stream_button_title" description="Start streaming">Start streaming</string>
