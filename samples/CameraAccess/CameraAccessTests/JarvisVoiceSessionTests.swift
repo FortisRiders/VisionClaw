@@ -205,4 +205,144 @@ final class JarvisVoiceSessionTests: XCTestCase {
                        "Session should load at most 100 messages from UserDefaults")
         freshSession.clearHistory()
     }
+
+    // MARK: - activeChatTitle
+
+    func test_activeChatTitle_returnsJarvisWhenIdIsMain() {
+        session.activeChatId = "main"
+        XCTAssertEqual(session.activeChatTitle, "Jarvis")
+    }
+
+    func test_activeChatTitle_returnsChatTitleForNamedChat() {
+        let chat = JarvisChat(
+            id: "abc12345",
+            title: "My Test Chat",
+            previewText: "",
+            createdAt: Date(),
+            updatedAt: Date(),
+            sessionKey: "key:chat-abc12345"
+        )
+        session.chatList = [chat]
+        session.activeChatId = "abc12345"
+        XCTAssertEqual(session.activeChatTitle, "My Test Chat")
+    }
+
+    func test_activeChatTitle_fallsBackToJarvisForUnknownId() {
+        session.chatList = []
+        session.activeChatId = "nonexistent"
+        XCTAssertEqual(session.activeChatTitle, "Jarvis")
+    }
+
+    // MARK: - renameChat
+
+    func test_renameChat_updatesTitle() {
+        let chat = JarvisChat(
+            id: "rename01",
+            title: "Old Title",
+            previewText: "",
+            createdAt: Date(),
+            updatedAt: Date(),
+            sessionKey: "key:chat-rename01"
+        )
+        let _ = makeAndActivateProfile()
+        session.switchProfile()
+        session.chatList.append(chat)
+        session.renameChat(id: "rename01", title: "New Title")
+        let updated = session.chatList.first { $0.id == "rename01" }
+        XCTAssertEqual(updated?.title, "New Title")
+    }
+
+    func test_renameChat_unknownId_doesNothing() {
+        let _ = makeAndActivateProfile()
+        session.switchProfile()
+        let before = session.chatList.count
+        session.renameChat(id: "nonexistent-id", title: "Whatever")
+        XCTAssertEqual(session.chatList.count, before, "renameChat with unknown id should not change chatList size")
+    }
+
+    // MARK: - deleteChat
+
+    func test_deleteChat_withMainId_isNoOp() {
+        let mainChat = JarvisChat(
+            id: "main",
+            title: "Jarvis",
+            previewText: "",
+            createdAt: Date(),
+            updatedAt: Date(),
+            sessionKey: "key:main"
+        )
+        let _ = makeAndActivateProfile()
+        session.switchProfile()
+        session.chatList = [mainChat]
+        session.deleteChat(mainChat)
+        XCTAssertEqual(session.chatList.count, 1, "deleteChat should not remove the main chat")
+        XCTAssertEqual(session.chatList.first?.id, "main")
+    }
+
+    func test_deleteChat_removesNonMainChat() {
+        let mainChat = JarvisChat(
+            id: "main",
+            title: "Jarvis",
+            previewText: "",
+            createdAt: Date(),
+            updatedAt: Date(),
+            sessionKey: "key:main"
+        )
+        let secondary = JarvisChat(
+            id: "del00001",
+            title: "To Delete",
+            previewText: "",
+            createdAt: Date(),
+            updatedAt: Date(),
+            sessionKey: "key:chat-del00001"
+        )
+        let _ = makeAndActivateProfile()
+        session.switchProfile()
+        session.chatList = [mainChat, secondary]
+        session.activeChatId = "main"
+        session.deleteChat(secondary)
+        XCTAssertFalse(session.chatList.contains { $0.id == "del00001" },
+                       "deleteChat should remove the chat from chatList")
+    }
+
+    // MARK: - clearHistory
+
+    func test_clearHistory_resetsPreviewTextOnActiveChat() {
+        let _ = makeAndActivateProfile()
+        session.switchProfile()
+
+        let chat = JarvisChat(
+            id: "main",
+            title: "Jarvis",
+            previewText: "Some previous response preview",
+            createdAt: Date(),
+            updatedAt: Date(),
+            sessionKey: "key:main"
+        )
+        session.chatList = [chat]
+        session.activeChatId = "main"
+
+        session.clearHistory()
+
+        let updated = session.chatList.first { $0.id == "main" }
+        XCTAssertEqual(updated?.previewText, "",
+                       "clearHistory should reset previewText to empty string")
+    }
+
+    func test_clearHistory_emptiesMessages() {
+        let _ = makeAndActivateProfile()
+        session.switchProfile()
+
+        let preloaded = [
+            ChatMessage(role: .user, text: "Hello"),
+            ChatMessage(role: .assistant, text: "Hi there")
+        ]
+        let profile = ProfileManager.shared.activeProfile!
+        storeMessages(preloaded, forProfileId: profile.id)
+
+        let fresh = JarvisVoiceSession()
+        XCTAssertFalse(fresh.messages.isEmpty, "Pre-condition: messages loaded")
+        fresh.clearHistory()
+        XCTAssertTrue(fresh.messages.isEmpty)
+    }
 }
