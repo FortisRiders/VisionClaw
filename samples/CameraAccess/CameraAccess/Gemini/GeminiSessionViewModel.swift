@@ -15,7 +15,6 @@ class GeminiSessionViewModel: ObservableObject {
   private let openClawBridge = OpenClawBridge()
   private var toolCallRouter: ToolCallRouter?
   let audioManager = AudioManager()
-  private let eventClient = OpenClawEventClient()
   private var lastVideoFrameTime: Date = .distantPast
   private var stateObservation: Task<Void, Never>?
 
@@ -161,21 +160,9 @@ class GeminiSessionViewModel: ObservableObject {
       return
     }
 
-    // Connect to OpenClaw event stream for proactive notifications
-    if SettingsManager.shared.proactiveNotificationsEnabled {
-      eventClient.onNotification = { [weak self] text in
-        guard let self else { return }
-        Task { @MainActor in
-          guard self.isGeminiActive, self.connectionState == .ready else { return }
-          self.geminiService.sendTextMessage(text)
-        }
-      }
-      eventClient.connect()
-    }
   }
 
   func stopSession() {
-    eventClient.disconnect()
     toolCallRouter?.cancelAll()
     toolCallRouter = nil
     audioManager.stopCapture()
