@@ -70,7 +70,6 @@
 		E6DA451F2E79A63100E3F688 /* MockDeviceKitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6DA451A2E79A63100E3F688 /* MockDeviceKitView.swift */; };
 		E6FD3BCE2EB4D53A00E7FE5D /* NonStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6FD3BCD2EB4D53A00E7FE5D /* NonStreamView.swift */; };
 		FA100A0000000000FACE0002 /* JarvisPTTView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA100A0000000000FACE0001 /* JarvisPTTView.swift */; };
-		FACE00010000000000000001 /* ChatListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FACE00020000000000000001 /* ChatListView.swift */; };
 		FA2B00020000000000000001 /* TextSanitizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2B00010000000000000001 /* TextSanitizer.swift */; };
 		FA2B00030000000000000001 /* sherpa-onnx.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = FA2B00040000000000000001 /* sherpa-onnx.xcframework */; };
 		FA2B00050000000000000001 /* sherpa-onnx.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = FA2B00040000000000000001 /* sherpa-onnx.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -81,6 +80,7 @@
 		FA4A00080000000000000001 /* JarvisLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA4A00040000000000000001 /* JarvisLiveActivity.swift */; };
 		FA4A00090000000000000001 /* JarvisWidgetIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA4A00050000000000000001 /* JarvisWidgetIntents.swift */; };
 		FA4A000A0000000000000001 /* JarvisWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = FA4A00010000000000000001 /* JarvisWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		FACE00010000000000000001 /* ChatListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FACE00020000000000000001 /* ChatListView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -188,7 +188,6 @@
 		E6DA451A2E79A63100E3F688 /* MockDeviceKitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockDeviceKitView.swift; sourceTree = "<group>"; };
 		E6FD3BCD2EB4D53A00E7FE5D /* NonStreamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NonStreamView.swift; sourceTree = "<group>"; };
 		FA100A0000000000FACE0001 /* JarvisPTTView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JarvisPTTView.swift; sourceTree = "<group>"; };
-		FACE00020000000000000001 /* ChatListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListView.swift; sourceTree = "<group>"; };
 		FA2B00010000000000000001 /* TextSanitizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextSanitizer.swift; sourceTree = "<group>"; };
 		FA2B00040000000000000001 /* sherpa-onnx.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = "sherpa-onnx.xcframework"; path = "CameraAccess/sherpa-onnx.xcframework"; sourceTree = SOURCE_ROOT; };
 		FA2B00070000000000000001 /* kokoro-int8-en-v0_19 */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "kokoro-int8-en-v0_19"; path = "CameraAccess/kokoro-int8-en-v0_19"; sourceTree = SOURCE_ROOT; };
@@ -199,6 +198,7 @@
 		FA4A00040000000000000001 /* JarvisLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JarvisLiveActivity.swift; sourceTree = "<group>"; };
 		FA4A00050000000000000001 /* JarvisWidgetIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JarvisWidgetIntents.swift; sourceTree = "<group>"; };
 		FA4A00060000000000000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		FACE00020000000000000001 /* ChatListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
