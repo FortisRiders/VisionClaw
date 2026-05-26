@@ -2,8 +2,9 @@
 .DS_Store
 xcuserdata/
 
-# FastVLM model files (large binaries, download separately)
+# Large binary model files (download separately)
 CameraAccess/FastVLM/models/
+CameraAccess/kokoro-int8-en-v0_19/
 
 # Local secrets (API keys, tokens)
 CameraAccess/Secrets.swift

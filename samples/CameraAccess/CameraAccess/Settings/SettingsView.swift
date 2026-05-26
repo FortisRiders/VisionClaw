@@ -10,6 +10,7 @@ struct SettingsView: View {
   @State private var webrtcSignalingURL: String = ""
   @State private var showLiveButton: Bool = false
   @State private var proactiveNotificationsEnabled: Bool = true
+  @State private var useKokoroTTS: Bool = true
   @State private var showResetConfirmation = false
   @State private var profileSheet: ProfileSheet? = nil
 
@@ -60,6 +61,10 @@ struct SettingsView: View {
                 .font(.system(.body, design: .monospaced))
             }
           }
+        }
+
+        Section(header: Text("Voice"), footer: Text("High Quality Voice uses Kokoro on-device TTS (requires model files in app bundle). Falls back to system voice automatically if unavailable.")) {
+          Toggle("High Quality Voice", isOn: $useKokoroTTS)
         }
 
         Section(header: Text("Notifications"), footer: Text("Receive proactive updates from OpenClaw (heartbeat, scheduled tasks) spoken through the glasses.")) {
@@ -119,6 +124,7 @@ struct SettingsView: View {
     webrtcSignalingURL = settings.webrtcSignalingURL
     showLiveButton = settings.showLiveButton
     proactiveNotificationsEnabled = settings.proactiveNotificationsEnabled
+    useKokoroTTS = settings.useKokoroTTS
   }
 
   private func resolveOpenClawDeviceId() -> String {
@@ -135,5 +141,6 @@ struct SettingsView: View {
     settings.webrtcSignalingURL = webrtcSignalingURL.trimmingCharacters(in: .whitespacesAndNewlines)
     settings.showLiveButton = showLiveButton
     settings.proactiveNotificationsEnabled = proactiveNotificationsEnabled
+    settings.useKokoroTTS = useKokoroTTS
   }
 }

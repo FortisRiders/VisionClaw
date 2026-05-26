@@ -12,6 +12,7 @@ final class SettingsManager {
     case webrtcSignalingURL
     case proactiveNotificationsEnabled
     case showLiveButton
+    case useKokoroTTS
   }
 
   private init() {}
@@ -50,6 +51,13 @@ final class SettingsManager {
     set { defaults.set(newValue, forKey: Key.showLiveButton.rawValue) }
   }
 
+  // MARK: - Voice
+
+  var useKokoroTTS: Bool {
+    get { defaults.object(forKey: Key.useKokoroTTS.rawValue) as? Bool ?? true }
+    set { defaults.set(newValue, forKey: Key.useKokoroTTS.rawValue) }
+  }
+
   // MARK: - Notifications
 
   var proactiveNotificationsEnabled: Bool {
@@ -61,7 +69,8 @@ final class SettingsManager {
 
   func resetAll() {
     for key in [Key.openClawHost, .openClawPort, .openClawGatewayToken,
-                .webrtcSignalingURL, .showLiveButton, .proactiveNotificationsEnabled] {
+                .webrtcSignalingURL, .showLiveButton, .proactiveNotificationsEnabled,
+                .useKokoroTTS] {
       defaults.removeObject(forKey: key.rawValue)
     }
   }

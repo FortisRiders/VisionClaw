@@ -18,8 +18,6 @@
 		8FD96B952E6F0F7D00F56AB1 /* MWDATCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8FD96B942E6F0F7D00F56AB1 /* MWDATCore */; };
 		8FD96B952E6F0F7D00F56AB2 /* MWDATCamera in Frameworks */ = {isa = PBXBuildFile; productRef = 8FD96B942E6F0F7D00F56AB2 /* MWDATCamera */; };
 		8FD96B952E6F0F7D00F56AB3 /* MWDATMockDevice in Frameworks */ = {isa = PBXBuildFile; productRef = 8FD96B942E6F0F7D00F56AB3 /* MWDATMockDevice */; };
-		9DF3000C2F7000000090B9B9 /* MWDATCore in Frameworks (Tests) */ = {isa = PBXBuildFile; productRef = 9DF3000A2F7000000090B9B9 /* MWDATCore (Tests) */; };
-		9DF3000D2F7000000090B9B9 /* MWDATMockDevice in Frameworks */ = {isa = PBXBuildFile; productRef = 9DF3000B2F7000000090B9B9 /* MWDATMockDevice */; };
 		8FFD5FF52E8422580035E446 /* CircleButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FFD5FF22E8422580035E446 /* CircleButton.swift */; };
 		8FFD5FF62E8422580035E446 /* CustomButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FFD5FF32E8422580035E446 /* CustomButton.swift */; };
 		8FFD602C2E8433E20035E446 /* MockDeviceKitViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FFD60292E8433E20035E446 /* MockDeviceKitViewModel.swift */; };
@@ -46,11 +44,11 @@
 		9DF1000D2F5000000090B9B9 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF1000B2F5000000090B9B9 /* UserProfile.swift */; };
 		9DF1000E2F5000000090B9B9 /* ProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF1000C2F5000000090B9B9 /* ProfileManager.swift */; };
 		9DF1000F2F5000000090B9B9 /* PINPadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF100102F5000000090B9B9 /* PINPadView.swift */; };
-		9DF1001A2F5000000090B9B9 /* PINFlowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF100192F5000000090B9B9 /* PINFlowController.swift */; };
 		9DF100112F5000000090B9B9 /* CreateProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF100122F5000000090B9B9 /* CreateProfileView.swift */; };
 		9DF100132F5000000090B9B9 /* ProfileGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF100142F5000000090B9B9 /* ProfileGateView.swift */; };
 		9DF100152F5000000090B9B9 /* ProfileSettingsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF100162F5000000090B9B9 /* ProfileSettingsSection.swift */; };
 		9DF100172F5000000090B9B9 /* ProfileDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF100182F5000000090B9B9 /* ProfileDetailSheet.swift */; };
+		9DF1001A2F5000000090B9B9 /* PINFlowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF100192F5000000090B9B9 /* PINFlowController.swift */; };
 		9DF200012F6000000090B9B9 /* EmailValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF200002F6000000090B9B9 /* EmailValidator.swift */; };
 		9DF200032F6000000090B9B9 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF200022F6000000090B9B9 /* KeychainService.swift */; };
 		9DF200052F6100000090B9B9 /* ProfileScopedStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF200062F6100000090B9B9 /* ProfileScopedStore.swift */; };
@@ -58,6 +56,8 @@
 		9DF200092F6200000090B9B9 /* ErrorBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF2000A2F6200000090B9B9 /* ErrorBanner.swift */; };
 		9DF2000B2F6300000090B9B9 /* AppSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF2000C2F6300000090B9B9 /* AppSessionCoordinator.swift */; };
 		9DF2000E2F6400000090B9B9 /* AudioSessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF2000D2F6400000090B9B9 /* AudioSessionController.swift */; };
+		9DF3000C2F7000000090B9B9 /* MWDATCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9DF3000A2F7000000090B9B9 /* MWDATCore */; };
+		9DF3000D2F7000000090B9B9 /* MWDATMockDevice in Frameworks */ = {isa = PBXBuildFile; productRef = 9DF3000B2F7000000090B9B9 /* MWDATMockDevice */; };
 		A1B2C3D42F0A000200000001 /* GeminiConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D42F0A000100000001 /* GeminiConfig.swift */; };
 		A1B2C3D42F0A000200000002 /* GeminiLiveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D42F0A000100000002 /* GeminiLiveService.swift */; };
 		A1B2C3D42F0A000200000003 /* AudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D42F0A000100000003 /* AudioManager.swift */; };
@@ -70,6 +70,13 @@
 		E6DA451F2E79A63100E3F688 /* MockDeviceKitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6DA451A2E79A63100E3F688 /* MockDeviceKitView.swift */; };
 		E6FD3BCE2EB4D53A00E7FE5D /* NonStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6FD3BCD2EB4D53A00E7FE5D /* NonStreamView.swift */; };
 		FA100A0000000000FACE0002 /* JarvisPTTView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA100A0000000000FACE0001 /* JarvisPTTView.swift */; };
+		FACE00010000000000000001 /* ChatListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FACE00020000000000000001 /* ChatListView.swift */; };
+		FA2B00020000000000000001 /* TextSanitizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2B00010000000000000001 /* TextSanitizer.swift */; };
+		FA2B00030000000000000001 /* sherpa-onnx.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = FA2B00040000000000000001 /* sherpa-onnx.xcframework */; };
+		FA2B00050000000000000001 /* sherpa-onnx.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = FA2B00040000000000000001 /* sherpa-onnx.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		FA2B00060000000000000001 /* kokoro-int8-en-v0_19 in Resources */ = {isa = PBXBuildFile; fileRef = FA2B00070000000000000001 /* kokoro-int8-en-v0_19 */; };
+		FA2B00080000000000000001 /* onnxruntime.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = FA2B00090000000000000001 /* onnxruntime.xcframework */; };
+		FA2B000A0000000000000001 /* onnxruntime.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = FA2B00090000000000000001 /* onnxruntime.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		FA4A00070000000000000001 /* JarvisWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA4A00030000000000000001 /* JarvisWidgetBundle.swift */; };
 		FA4A00080000000000000001 /* JarvisLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA4A00040000000000000001 /* JarvisLiveActivity.swift */; };
 		FA4A00090000000000000001 /* JarvisWidgetIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA4A00050000000000000001 /* JarvisWidgetIntents.swift */; };
@@ -100,6 +107,8 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
+				FA2B00050000000000000001 /* sherpa-onnx.xcframework in Embed Frameworks */,
+				FA2B000A0000000000000001 /* onnxruntime.xcframework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -153,12 +162,12 @@
 		9DD895952F405E0E0090B9B9 /* RTCVideoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RTCVideoView.swift; sourceTree = "<group>"; };
 		9DF1000B2F5000000090B9B9 /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
 		9DF1000C2F5000000090B9B9 /* ProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileManager.swift; sourceTree = "<group>"; };
-		9DF100192F5000000090B9B9 /* PINFlowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PINFlowController.swift; sourceTree = "<group>"; };
 		9DF100102F5000000090B9B9 /* PINPadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PINPadView.swift; sourceTree = "<group>"; };
 		9DF100122F5000000090B9B9 /* CreateProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateProfileView.swift; sourceTree = "<group>"; };
 		9DF100142F5000000090B9B9 /* ProfileGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileGateView.swift; sourceTree = "<group>"; };
 		9DF100162F5000000090B9B9 /* ProfileSettingsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSettingsSection.swift; sourceTree = "<group>"; };
 		9DF100182F5000000090B9B9 /* ProfileDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileDetailSheet.swift; sourceTree = "<group>"; };
+		9DF100192F5000000090B9B9 /* PINFlowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PINFlowController.swift; sourceTree = "<group>"; };
 		9DF200002F6000000090B9B9 /* EmailValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailValidator.swift; sourceTree = "<group>"; };
 		9DF200022F6000000090B9B9 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
 		9DF200062F6100000090B9B9 /* ProfileScopedStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileScopedStore.swift; sourceTree = "<group>"; };
@@ -179,6 +188,11 @@
 		E6DA451A2E79A63100E3F688 /* MockDeviceKitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockDeviceKitView.swift; sourceTree = "<group>"; };
 		E6FD3BCD2EB4D53A00E7FE5D /* NonStreamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NonStreamView.swift; sourceTree = "<group>"; };
 		FA100A0000000000FACE0001 /* JarvisPTTView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JarvisPTTView.swift; sourceTree = "<group>"; };
+		FACE00020000000000000001 /* ChatListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListView.swift; sourceTree = "<group>"; };
+		FA2B00010000000000000001 /* TextSanitizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextSanitizer.swift; sourceTree = "<group>"; };
+		FA2B00040000000000000001 /* sherpa-onnx.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = "sherpa-onnx.xcframework"; path = "CameraAccess/sherpa-onnx.xcframework"; sourceTree = SOURCE_ROOT; };
+		FA2B00070000000000000001 /* kokoro-int8-en-v0_19 */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "kokoro-int8-en-v0_19"; path = "CameraAccess/kokoro-int8-en-v0_19"; sourceTree = SOURCE_ROOT; };
+		FA2B00090000000000000001 /* onnxruntime.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = onnxruntime.xcframework; path = CameraAccess/onnxruntime.xcframework; sourceTree = SOURCE_ROOT; };
 		FA4A00010000000000000001 /* JarvisWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = JarvisWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		FA4A00020000000000000001 /* JarvisWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = JarvisWidget.entitlements; sourceTree = "<group>"; };
 		FA4A00030000000000000001 /* JarvisWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JarvisWidgetBundle.swift; sourceTree = "<group>"; };
@@ -203,6 +217,17 @@
 				9DD6CAFE2F3C62DA00ED7098 /* WebRTC in Frameworks */,
 				8FD96B952E6F0F7D00F56AB2 /* MWDATCamera in Frameworks */,
 				8FD96B952E6F0F7D00F56AB3 /* MWDATMockDevice in Frameworks */,
+				FA2B00030000000000000001 /* sherpa-onnx.xcframework in Frameworks */,
+				FA2B00080000000000000001 /* onnxruntime.xcframework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9DF3000E2F7000000090B9B9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9DF3000C2F7000000090B9B9 /* MWDATCore in Frameworks */,
+				9DF3000D2F7000000090B9B9 /* MWDATMockDevice in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -210,15 +235,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		9DF3000E2F7000000090B9B9 /* Frameworks (Tests) */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				9DF3000C2F7000000090B9B9 /* MWDATCore in Frameworks (Tests) */,
-				9DF3000D2F7000000090B9B9 /* MWDATMockDevice in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -248,6 +264,8 @@
 		8F2A14F12DDBCEB900D4E5F2 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				FA2B00040000000000000001 /* sherpa-onnx.xcframework */,
+				FA2B00090000000000000001 /* onnxruntime.xcframework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -278,6 +296,7 @@
 				E6A188472EB918740097D0E1 /* StreamView.swift */,
 				E6FD3BCD2EB4D53A00E7FE5D /* NonStreamView.swift */,
 				FA100A0000000000FACE0001 /* JarvisPTTView.swift */,
+				FACE00020000000000000001 /* ChatListView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -297,6 +316,7 @@
 				8FD96B702E6F0A9800F56AB1 /* ViewModels */,
 				8FD96B762E6F0A9800F56AB1 /* Views */,
 				8FD96B772E6F0A9800F56AB1 /* Assets.xcassets */,
+				FA2B00070000000000000001 /* kokoro-int8-en-v0_19 */,
 				8FD96B782E6F0A9800F56AB1 /* CameraAccess.entitlements */,
 				8FD96B792E6F0A9800F56AB1 /* CameraAccessApp.swift */,
 				8FD96B7B2E6F0A9800F56AB1 /* Info.plist */,
@@ -376,6 +396,7 @@
 				9DF2000A2F6200000090B9B9 /* ErrorBanner.swift */,
 				9DF2000C2F6300000090B9B9 /* AppSessionCoordinator.swift */,
 				9DF2000D2F6400000090B9B9 /* AudioSessionController.swift */,
+				FA2B00010000000000000001 /* TextSanitizer.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -448,7 +469,7 @@
 			buildConfigurationList = E699CC9D2E8150670052C240 /* Build configuration list for PBXNativeTarget "CameraAccessTests" */;
 			buildPhases = (
 				E699CC912E8150670052C240 /* Sources */,
-				9DF3000E2F7000000090B9B9 /* Frameworks (Tests) */,
+				9DF3000E2F7000000090B9B9 /* Frameworks */,
 				E699CC932E8150670052C240 /* Resources */,
 			);
 			buildRules = (
@@ -461,7 +482,7 @@
 			);
 			name = CameraAccessTests;
 			packageProductDependencies = (
-				9DF3000A2F7000000090B9B9 /* MWDATCore (Tests) */,
+				9DF3000A2F7000000090B9B9 /* MWDATCore */,
 				9DF3000B2F7000000090B9B9 /* MWDATMockDevice */,
 			);
 			productName = CameraAccessTests;
@@ -536,6 +557,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8FD96B8D2E6F0A9800F56AB1 /* Assets.xcassets in Resources */,
+				FA2B00060000000000000001 /* kokoro-int8-en-v0_19 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -593,6 +615,7 @@
 				8FFD5FF62E8422580035E446 /* CustomButton.swift in Sources */,
 				E6FD3BCE2EB4D53A00E7FE5D /* NonStreamView.swift in Sources */,
 				FA100A0000000000FACE0002 /* JarvisPTTView.swift in Sources */,
+				FACE00010000000000000001 /* ChatListView.swift in Sources */,
 				A1B2C3D42F0A000200000001 /* GeminiConfig.swift in Sources */,
 				A1B2C3D42F0A000200000002 /* GeminiLiveService.swift in Sources */,
 				A1B2C3D42F0A000200000003 /* AudioManager.swift in Sources */,
@@ -615,6 +638,7 @@
 				9DF200092F6200000090B9B9 /* ErrorBanner.swift in Sources */,
 				9DF2000B2F6300000090B9B9 /* AppSessionCoordinator.swift in Sources */,
 				9DF2000E2F6400000090B9B9 /* AudioSessionController.swift in Sources */,
+				FA2B00020000000000000001 /* TextSanitizer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -672,9 +696,12 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = "-lc++";
+				OTHER_SWIFT_FLAGS = "-D KOKORO_ENABLED";
 				PRODUCT_BUNDLE_IDENTIFIER = com.xiaoanliu.VisionClaw;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_OBJC_BRIDGING_HEADER = CameraAccess/Utilities/SherpaOnnxBridge.h;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -700,9 +727,12 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = "-lc++";
+				OTHER_SWIFT_FLAGS = "-D KOKORO_ENABLED";
 				PRODUCT_BUNDLE_IDENTIFIER = com.xiaoanliu.VisionClaw;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_OBJC_BRIDGING_HEADER = CameraAccess/Utilities/SherpaOnnxBridge.h;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -993,16 +1023,6 @@
 			package = 95F7F3332DEF0D91006D1C1A /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */;
 			productName = MWDATCore;
 		};
-		9DF3000A2F7000000090B9B9 /* MWDATCore (Tests) */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 95F7F3332DEF0D91006D1C1A /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */;
-			productName = MWDATCore;
-		};
-		9DF3000B2F7000000090B9B9 /* MWDATMockDevice */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 95F7F3332DEF0D91006D1C1A /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */;
-			productName = MWDATMockDevice;
-		};
 		8FD96B942E6F0F7D00F56AB2 /* MWDATCamera */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 95F7F3332DEF0D91006D1C1A /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */;
@@ -1022,6 +1042,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 9DD6CB0A2F3C648800ED7098 /* XCRemoteSwiftPackageReference "WebRTC" */;
 			productName = WebRTC;
+		};
+		9DF3000A2F7000000090B9B9 /* MWDATCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 95F7F3332DEF0D91006D1C1A /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */;
+			productName = MWDATCore;
+		};
+		9DF3000B2F7000000090B9B9 /* MWDATMockDevice */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 95F7F3332DEF0D91006D1C1A /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */;
+			productName = MWDATMockDevice;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

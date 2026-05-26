@@ -40,6 +40,13 @@ class JarvisVoiceSession: NSObject, ObservableObject {
     @Published var messages: [ChatMessage] = []
     @Published var errorMessage: String?
     @Published var isLiveModeActive = false
+    @Published var chatList: [JarvisChat] = []
+    @Published var activeChatId: String = "main"
+
+    var activeChatTitle: String {
+        if activeChatId == "main" { return "Jarvis" }
+        return chatList.first { $0.id == activeChatId }?.title ?? "Jarvis"
+    }
 
     var frameProvider: (() -> [UIImage])?
     var isLiveStreamingActive: Bool = false
@@ -48,6 +55,7 @@ class JarvisVoiceSession: NSObject, ObservableObject {
     private var liveActivity: Activity<JarvisActivityAttributes>?
 
     private let bridge = OpenClawBridge()
+    private let eventClient = OpenClawEventClient()
     private let synthesizer = AVSpeechSynthesizer()
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale.current)
 
@@ -63,19 +71,182 @@ class JarvisVoiceSession: NSObject, ObservableObject {
     private var audioInterruptionObserver: NSObjectProtocol?
 
     private static let maxStoredMessages = 100
-
-    private var store = ProfileScopedStore<[ChatMessage]>(
-        keyPrefix: "jarvis.chat.messages",
-        profileId: ProfileManager.shared.activeProfile?.id.uuidString ?? "default"
-    )
+    private var store: ProfileScopedStore<[ChatMessage]>
 
     override init() {
+        let profileId = ProfileManager.shared.activeProfile?.id.uuidString ?? "default"
+        let savedChatId = UserDefaults.standard.string(forKey: "jarvis.activeChatId.\(profileId)") ?? "main"
+        let prefix = savedChatId == "main" ? "jarvis.chat.messages" : "jarvis.chat.messages.\(savedChatId)"
+        self.store = ProfileScopedStore<[ChatMessage]>(keyPrefix: prefix, profileId: profileId)
         super.init()
+        self.activeChatId = savedChatId
         synthesizer.delegate = self
         synthesizer.usesApplicationAudioSession = true
         messages = store.load() ?? []
+        chatList = Self.loadLocalChatList(profileId: profileId)
+        ensureMainChat(profileId: profileId)
         registerWidgetNotificationObservers()
         observeAudioInterruptions()
+        _ = KokoraTTSEngine.shared
+    }
+
+    // MARK: - Chat storage helpers
+
+    private static func loadLocalChatList(profileId: String) -> [JarvisChat] {
+        guard let data = UserDefaults.standard.data(forKey: "jarvis.chats.\(profileId)"),
+              let list = try? JSONDecoder().decode([JarvisChat].self, from: data)
+        else { return [] }
+        return list
+    }
+
+    private func saveLocalChatList(_ list: [JarvisChat], profileId: String) {
+        guard let data = try? JSONEncoder().encode(list) else { return }
+        UserDefaults.standard.set(data, forKey: "jarvis.chats.\(profileId)")
+    }
+
+    private func makeStore(chatId: String, profileId: String) -> ProfileScopedStore<[ChatMessage]> {
+        let prefix = chatId == "main" ? "jarvis.chat.messages" : "jarvis.chat.messages.\(chatId)"
+        return ProfileScopedStore<[ChatMessage]>(keyPrefix: prefix, profileId: profileId)
+    }
+
+    private var profileId: String {
+        ProfileManager.shared.activeProfile?.id.uuidString ?? "default"
+    }
+
+    private func ensureMainChat(profileId: String) {
+        guard !chatList.contains(where: { $0.id == "main" }) else { return }
+        let main = JarvisChat(
+            id: "main",
+            title: "Jarvis",
+            previewText: "",
+            createdAt: Date(),
+            updatedAt: Date(),
+            sessionKey: bridge.currentSessionKey
+        )
+        chatList.insert(main, at: 0)
+        saveLocalChatList(chatList, profileId: profileId)
+    }
+
+    // MARK: - Chat management
+
+    func loadChatList() async {
+        let pid = profileId
+        chatList = Self.loadLocalChatList(profileId: pid)
+        ensureMainChat(profileId: pid)
+
+        let serverKeys = await bridge.fetchSessionList()
+        var updated = false
+        for key in serverKeys {
+            if chatList.contains(where: { $0.sessionKey == key }) { continue }
+            if key.hasSuffix(":main") { continue }
+            let parts = key.split(separator: ":")
+            let chatId: String
+            if let last = parts.last, last.hasPrefix("chat-") {
+                chatId = String(last.dropFirst(5))
+            } else {
+                chatId = JarvisChat.makeId()
+            }
+            let chat = JarvisChat(
+                id: chatId,
+                title: "Chat \(chatId.prefix(4))",
+                previewText: "",
+                createdAt: Date(),
+                updatedAt: Date(),
+                sessionKey: key
+            )
+            chatList.append(chat)
+            updated = true
+        }
+        if updated {
+            sortChatList()
+            saveLocalChatList(chatList, profileId: pid)
+        }
+    }
+
+    func newChat() async {
+        let pid = profileId
+        let sessionKey = await bridge.generateNewChatSessionKey()
+        let parts = sessionKey.split(separator: ":")
+        let chatId: String
+        if let last = parts.last, last.hasPrefix("chat-") {
+            chatId = String(last.dropFirst(5))
+        } else {
+            chatId = JarvisChat.makeId()
+        }
+        let chat = JarvisChat(
+            id: chatId,
+            title: "New Chat",
+            previewText: "",
+            createdAt: Date(),
+            updatedAt: Date(),
+            sessionKey: sessionKey
+        )
+        chatList.insert(chat, at: chatList.first?.id == "main" ? 1 : 0)
+        saveLocalChatList(chatList, profileId: pid)
+        await switchChat(to: chat)
+    }
+
+    func switchChat(to chat: JarvisChat) async {
+        let pid = profileId
+        store.save(messages)
+        activeChatId = chat.id
+        UserDefaults.standard.set(chat.id, forKey: "jarvis.activeChatId.\(pid)")
+        store = makeStore(chatId: chat.id, profileId: pid)
+        messages = store.load() ?? []
+        liveTranscript = ""
+        let serverHistory = await bridge.fetchSessionHistory(sessionKey: chat.sessionKey, limit: 20)
+        let bridgeHistory: [[String: Any]] = serverHistory.compactMap { msg in
+            guard let role = msg["role"], let content = msg["content"] else { return nil }
+            return ["role": role, "content": content]
+        }
+        bridge.switchToSession(chat.sessionKey, withHistory: bridgeHistory)
+        NSLog("[JarvisPTT] Switched to chat: %@ (%@)", chat.title, chat.id)
+    }
+
+    func renameChat(id: String, title: String) {
+        let pid = profileId
+        if let idx = chatList.firstIndex(where: { $0.id == id }) {
+            chatList[idx].title = title
+            saveLocalChatList(chatList, profileId: pid)
+        }
+    }
+
+    func deleteChat(_ chat: JarvisChat) {
+        guard chat.id != "main" else { return }
+        let pid = profileId
+        let key = "jarvis.chat.messages.\(chat.id).\(pid)"
+        UserDefaults.standard.removeObject(forKey: key)
+        chatList.removeAll { $0.id == chat.id }
+        saveLocalChatList(chatList, profileId: pid)
+        if activeChatId == chat.id {
+            if let main = chatList.first(where: { $0.id == "main" }) {
+                Task { await switchChat(to: main) }
+            }
+        }
+    }
+
+    private func sortChatList() {
+        chatList.sort {
+            if $0.id == "main" { return true }
+            if $1.id == "main" { return false }
+            return $0.updatedAt > $1.updatedAt
+        }
+    }
+
+    private func updateActiveChatMeta(with message: ChatMessage) {
+        let pid = profileId
+        guard let idx = chatList.firstIndex(where: { $0.id == activeChatId }) else { return }
+        if message.role == .user
+            && chatList[idx].title == "New Chat"
+            && messages.filter({ $0.role == .user }).count == 1 {
+            chatList[idx].title = JarvisChat.autoTitle(from: message.text)
+        }
+        if message.role == .assistant {
+            chatList[idx].previewText = String(message.text.prefix(80))
+        }
+        chatList[idx].updatedAt = Date()
+        sortChatList()
+        saveLocalChatList(chatList, profileId: pid)
     }
 
     func requestPermissions() async -> Bool {
@@ -99,6 +270,7 @@ class JarvisVoiceSession: NSObject, ObservableObject {
     func startListening(sharedAudioManager: AudioManager?) {
         guard state == .idle else { return }
         synthesizer.stopSpeaking(at: .immediate)
+        KokoraTTSEngine.shared.stop()
         liveTranscript = ""
         finalTranscriptContinuation = nil
 
@@ -215,6 +387,7 @@ class JarvisVoiceSession: NSObject, ObservableObject {
         // isHeld prevents any deactivate() call from releasing it between turns.
         AudioSessionController.shared.isHeld = true
         try? AudioSessionController.shared.activate(.voiceChatEchoCancelled)
+        connectEventClient()
         // Start and hold the mic engine for the entire live session.
         // Never stopping/restarting it means no AUIOClient_StartIO call from locked state.
         if sharedAudioManager == nil {
@@ -235,6 +408,7 @@ class JarvisVoiceSession: NSObject, ObservableObject {
         recognitionTask = nil
         recognitionRequest?.endAudio()
         recognitionRequest = nil
+        eventClient.disconnect()
         liveModeAudioManager?.pttAudioConsumer = nil
         stopEngine()
         if let engine = liveStandaloneEngine {
@@ -244,10 +418,29 @@ class JarvisVoiceSession: NSObject, ObservableObject {
             NSLog("[JarvisLive] Persistent standalone engine stopped")
         }
         synthesizer.stopSpeaking(at: .immediate)
+        KokoraTTSEngine.shared.stop()
         liveTranscript = ""
         state = .idle
         liveModeAudioManager = nil
         endLiveActivity()
+    }
+
+    private func connectEventClient() {
+        guard SettingsManager.shared.proactiveNotificationsEnabled else { return }
+        eventClient.onNotification = { [weak self] text in
+            Task { @MainActor [weak self] in
+                guard let self, self.isLiveModeActive else { return }
+                NSLog("[JarvisLive] Proactive notification: %@", String(text.prefix(120)))
+                let message = ChatMessage(role: .assistant, text: text)
+                self.appendMessage(message)
+                // Speak only when idle — don't interrupt an ongoing turn
+                if self.state == .idle {
+                    self.speak(text)
+                }
+            }
+        }
+        eventClient.connect()
+        NSLog("[JarvisLive] OpenClaw event client connected")
     }
 
     private func startLiveStandaloneEngine() {
@@ -255,8 +448,6 @@ class JarvisVoiceSession: NSObject, ObservableObject {
         do {
             let inputNode = engine.inputNode
             let format = inputNode.outputFormat(forBus: 0)
-            // Tap appends to whatever recognitionRequest is current — each new cycle
-            // just replaces self.recognitionRequest and the tap routes automatically.
             inputNode.installTap(onBus: 0, bufferSize: 4096, format: format) { [weak self] buffer, _ in
                 self?.recognitionRequest?.append(buffer)
             }
@@ -516,13 +707,20 @@ class JarvisVoiceSession: NSObject, ObservableObject {
         recognitionRequest = nil
         stopEngine()
         synthesizer.stopSpeaking(at: .immediate)
+        KokoraTTSEngine.shared.stop()
         state = .idle
         liveTranscript = ""
     }
 
     func switchProfile() {
-        store.switchProfile(to: ProfileManager.shared.activeProfile?.id.uuidString ?? "default") { messages }
+        let newPid = ProfileManager.shared.activeProfile?.id.uuidString ?? "default"
+        store.save(messages)
+        let savedChatId = UserDefaults.standard.string(forKey: "jarvis.activeChatId.\(newPid)") ?? "main"
+        activeChatId = savedChatId
+        store = makeStore(chatId: savedChatId, profileId: newPid)
         messages = store.load() ?? []
+        chatList = Self.loadLocalChatList(profileId: newPid)
+        ensureMainChat(profileId: newPid)
         liveTranscript = ""
         bridge.switchProfile()
     }
@@ -532,6 +730,11 @@ class JarvisVoiceSession: NSObject, ObservableObject {
         messages = []
         liveTranscript = ""
         bridge.resetSession()
+        let pid = profileId
+        if let idx = chatList.firstIndex(where: { $0.id == activeChatId }) {
+            chatList[idx].previewText = ""
+            saveLocalChatList(chatList, profileId: pid)
+        }
     }
 
     private func appendMessage(_ message: ChatMessage) {
@@ -540,6 +743,7 @@ class JarvisVoiceSession: NSObject, ObservableObject {
             messages = Array(messages.suffix(Self.maxStoredMessages))
         }
         store.save(messages)
+        updateActiveChatMeta(with: message)
     }
 
     private func resumeTranscript(_ text: String) {
@@ -562,11 +766,9 @@ class JarvisVoiceSession: NSObject, ObservableObject {
         }
     }
 
-    private var bargeInDetected = false
-
     private func speak(_ text: String) {
-        state = .speaking
-        bargeInDetected = false
+        let clean = TextSanitizer.sanitize(text)
+
         // Keep app alive while speaking so audio continues when screen is locked.
         if ttsBgTask != .invalid { UIApplication.shared.endBackgroundTask(ttsBgTask) }
         ttsBgTask = UIApplication.shared.beginBackgroundTask(withName: "jarvis-tts") { [weak self] in
@@ -581,8 +783,6 @@ class JarvisVoiceSession: NSObject, ObservableObject {
 
         var sessionReady = false
         if AudioSessionController.shared.isHeld {
-            // Session is held — just call setActive(true) without reconfiguring category.
-            // Changing category from background/locked fails with 'cannot interrupt others'.
             AudioSessionController.shared.reactivate()
             sessionReady = true
             NSLog("[JarvisTTS] Audio session resumed via reactivate() (held)")
@@ -605,7 +805,6 @@ class JarvisVoiceSession: NSObject, ObservableObject {
         }
 
         guard sessionReady else {
-            // Can't get audio — end background task and unblock the state machine
             NSLog("[JarvisTTS] Skipping TTS — no audio session available")
             if ttsBgTask != .invalid {
                 UIApplication.shared.endBackgroundTask(ttsBgTask)
@@ -618,13 +817,47 @@ class JarvisVoiceSession: NSObject, ObservableObject {
             return
         }
 
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.rate = 0.52
-        utterance.voice = bestEnglishVoice()
-        NSLog("[JarvisTTS] synthesizer.speak() — text=\"%@\"", String(text.prefix(60)))
-        synthesizer.speak(utterance)
-        if isLiveModeActive {
-            startBargeInMonitoring()
+        let kokoroEnabled = SettingsManager.shared.useKokoroTTS
+        let kokoroReady = KokoraTTSEngine.shared.isReady
+        NSLog("[JarvisTTS] TTS decision — kokoroEnabled=%@ kokoroReady=%@",
+              kokoroEnabled ? "true" : "false", kokoroReady ? "true" : "false")
+
+        if kokoroEnabled && kokoroReady {
+            NSLog("[JarvisTTS] Kokoro generating — text=\"%@\"", String(clean.prefix(60)))
+            KokoraTTSEngine.shared.speak(clean) { [weak self] in
+                Task { @MainActor [weak self] in self?.handleTTSDidFinish() }
+            }
+            KokoraTTSEngine.shared.onPlaybackStarted = { [weak self] in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    NSLog("[JarvisTTS] Kokoro playback started — switching to speaking")
+                    self.state = .speaking
+                }
+            }
+        } else {
+            state = .speaking
+            let utterance = AVSpeechUtterance(string: clean)
+            utterance.rate = 0.52
+            utterance.voice = bestEnglishVoice()
+            NSLog("[JarvisTTS] Apple TTS — text=\"%@\"", String(clean.prefix(60)))
+            synthesizer.speak(utterance)
+        }
+    }
+
+    private func handleTTSDidFinish() {
+        NSLog("[JarvisTTS] handleTTSDidFinish — ending bgTask, state=%@", "\(state)")
+        if ttsBgTask != .invalid {
+            UIApplication.shared.endBackgroundTask(ttsBgTask)
+            ttsBgTask = .invalid
+        }
+        guard isLiveModeActive else {
+            state = .idle
+            return
+        }
+        state = .idle
+        Task {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            self.startNextLiveListeningCycle()
         }
     }
 
@@ -645,6 +878,7 @@ class JarvisVoiceSession: NSObject, ObservableObject {
                 AudioSessionController.shared.markInterrupted()
                 if self.state == .speaking {
                     self.synthesizer.stopSpeaking(at: .immediate)
+                    KokoraTTSEngine.shared.stop()
                 }
             } else if type == .ended {
                 let optionsValue = notification.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
@@ -657,37 +891,6 @@ class JarvisVoiceSession: NSObject, ObservableObject {
                     AudioSessionController.shared.reactivate()
                 }
             }
-        }
-    }
-
-    private func startBargeInMonitoring() {
-        let request = SFSpeechAudioBufferRecognitionRequest()
-        request.shouldReportPartialResults = true
-        recognitionRequest = request
-
-        recognitionTask = speechRecognizer?.recognitionTask(with: request) { [weak self] result, _ in
-            Task { @MainActor [weak self] in
-                guard let self, self.state == .speaking, self.isLiveModeActive,
-                      !self.bargeInDetected else { return }
-                let text = result?.bestTranscription.formattedString ?? ""
-                guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-                self.bargeInDetected = true
-                self.liveTranscript = text
-                NSLog("[JarvisLive] Barge-in detected: \"%@\"", text)
-                self.synthesizer.stopSpeaking(at: .immediate)
-                // didFinish fires next → startNextLiveListeningCycle picks up
-            }
-        }
-
-        if let manager = liveModeAudioManager {
-            manager.pttAudioConsumer = { [weak self] buffer in
-                self?.recognitionRequest?.append(buffer)
-            }
-        } else if liveStandaloneEngine != nil {
-            // Persistent engine tap is already running — recognitionRequest = request above routes buffers.
-            NSLog("[JarvisLive] Barge-in monitoring: reusing persistent engine")
-        } else {
-            startStandaloneEngine(request: request)
         }
     }
 
@@ -707,28 +910,7 @@ class JarvisVoiceSession: NSObject, ObservableObject {
 
 extension JarvisVoiceSession: AVSpeechSynthesizerDelegate {
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        NSLog("[JarvisTTS] didFinish fired")
-        Task { @MainActor in
-            NSLog("[JarvisTTS] didFinish — ending bgTask, state=%@", "\(self.state)")
-            if self.ttsBgTask != .invalid {
-                UIApplication.shared.endBackgroundTask(self.ttsBgTask)
-                self.ttsBgTask = .invalid
-            }
-            guard self.isLiveModeActive else {
-                self.state = .idle
-                return
-            }
-            if self.bargeInDetected && !self.liveTranscript.trimmingCharacters(in: .whitespaces).isEmpty {
-                // Barge-in captured speech while we were speaking — send it immediately.
-                NSLog("[JarvisLive] Barge-in: sending captured \"%@\"", self.liveTranscript)
-                self.state = .listening
-                await self.sendLiveUtterance()
-            } else {
-                self.state = .idle
-                self.bargeInDetected = false
-                try? await Task.sleep(nanoseconds: 300_000_000)
-                self.startNextLiveListeningCycle()
-            }
-        }
+        NSLog("[JarvisTTS] AVSpeechSynthesizer didFinish")
+        Task { @MainActor in self.handleTTSDidFinish() }
     }
 }
