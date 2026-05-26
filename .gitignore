@@ -1,4 +1,5 @@
 .DS_Store
+.idea/
 
 # Android
 samples/CameraAccessAndroid/app/src/main/java/**/Secrets.kt
