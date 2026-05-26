@@ -140,6 +140,58 @@ class OpenClawBridge: ObservableObject {
     NSLog("[OpenClaw] Session reset (key: %@)", store.sessionKey)
   }
 
+  var currentSessionKey: String { store.sessionKey }
+
+  func switchToSession(_ key: String, withHistory history: [[String: Any]] = []) {
+    store.switchSession(to: key, saving: conversationHistory)
+    conversationHistory = history
+    NSLog("[OpenClaw] Switched to session: %@", key)
+  }
+
+  func generateNewChatSessionKey() async -> String {
+    await registerAgent()
+    let chatId = String(UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(8).lowercased())
+    let id = agentId ?? "main"
+    return "agent:\(id):chat-\(chatId)"
+  }
+
+  func fetchSessionList() async -> [String] {
+    guard let url = URL(string: "\(GeminiConfig.openClawHost):\(GeminiConfig.openClawPort)/tools/invoke") else { return [] }
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    applyOpenClawHeaders(to: &request, includeUser: ProfileManager.shared.activeProfile)
+    let body: [String: Any] = ["tool": "sessions_list", "args": [:] as [String: Any], "sessionKey": store.sessionKey]
+    do {
+      request.httpBody = try JSONSerialization.data(withJSONObject: body)
+      let (data, _) = try await session.data(for: request)
+      if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+         let sessions = json["sessions"] as? [String] { return sessions }
+      if let arr = try? JSONSerialization.jsonObject(with: data) as? [String] { return arr }
+    } catch {
+      NSLog("[OpenClaw] fetchSessionList error: %@", error.localizedDescription)
+    }
+    return []
+  }
+
+  func fetchSessionHistory(sessionKey: String, limit: Int = 20) async -> [[String: String]] {
+    guard let url = URL(string: "\(GeminiConfig.openClawHost):\(GeminiConfig.openClawPort)/tools/invoke") else { return [] }
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    applyOpenClawHeaders(to: &request, includeUser: ProfileManager.shared.activeProfile)
+    let body: [String: Any] = ["tool": "sessions_history", "args": ["sessionKey": sessionKey, "limit": limit], "sessionKey": store.sessionKey]
+    do {
+      request.httpBody = try JSONSerialization.data(withJSONObject: body)
+      let (data, _) = try await session.data(for: request)
+      if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+         let messages = json["messages"] as? [[String: String]] { return messages }
+    } catch {
+      NSLog("[OpenClaw] fetchSessionHistory error: %@", error.localizedDescription)
+    }
+    return []
+  }
+
   private func applyOpenClawHeaders(to request: inout URLRequest, includeUser user: UserProfile?) {
     request.setValue("Bearer \(GeminiConfig.openClawGatewayToken)", forHTTPHeaderField: "Authorization")
     request.setValue("glass", forHTTPHeaderField: "x-openclaw-message-channel")

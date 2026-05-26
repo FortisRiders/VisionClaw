@@ -13,6 +13,7 @@ struct JarvisPTTView: View {
     @State private var isTextMode = false
     @State private var textInput = ""
     @State private var showClearConfirmation = false
+    @State private var showChatList = false
     @FocusState private var textFieldFocused: Bool
 
     var body: some View {
@@ -30,6 +31,9 @@ struct JarvisPTTView: View {
         }
         .task {
             permissionsGranted = await session.requestPermissions()
+        }
+        .sheet(isPresented: $showChatList) {
+            ChatListView(session: session)
         }
         .alert("Jarvis", isPresented: Binding(
             get: { session.errorMessage != nil },
@@ -56,21 +60,16 @@ struct JarvisPTTView: View {
                 onDismiss()
             }
             Spacer()
-            Text("Jarvis")
+            Text(session.activeChatTitle)
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundColor(.white)
+                .lineLimit(1)
             Spacer()
-            Button(action: { showClearConfirmation = true }) {
-                Image(systemName: "trash")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.white.opacity(0.5))
+            Button(action: { showChatList = true }) {
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(.white.opacity(0.7))
                     .frame(width: 44, height: 44)
-            }
-            .confirmationDialog("Clear conversation?", isPresented: $showClearConfirmation, titleVisibility: .visible) {
-                Button("Clear History", role: .destructive) { session.clearHistory() }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This will delete all messages and Jarvis will forget the conversation.")
             }
         }
         .padding(.horizontal, 12)

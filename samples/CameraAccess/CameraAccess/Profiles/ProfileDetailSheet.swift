@@ -1,12 +1,15 @@
 import SwiftUI
 
 struct ProfileDetailSheet: View {
+  var jarvisSession: JarvisVoiceSession? = nil
+
   @ObservedObject private var manager = ProfileManager.shared
   @Environment(\.dismiss) private var dismiss
 
   @State private var mode: Mode = .detail
   @State private var selectedForSwitch: UserProfile? = nil
   @State private var pinError = false
+  @State private var showChatList = false
 
   private enum Mode { case detail, edit, switchUser }
 
@@ -78,6 +81,11 @@ struct ProfileDetailSheet: View {
         ProfileActionButton(icon: "pencil", label: "Edit Profile") {
           withAnimation { mode = .edit }
         }
+        if jarvisSession != nil {
+          ProfileActionButton(icon: "bubble.left.and.bubble.right", label: "Chat History") {
+            showChatList = true
+          }
+        }
         ProfileActionButton(icon: "person.2", label: "Switch User") {
           selectedForSwitch = nil
           withAnimation { mode = .switchUser }
@@ -87,6 +95,9 @@ struct ProfileDetailSheet: View {
         }
       }
       .padding(.horizontal, 32)
+      .sheet(isPresented: $showChatList) {
+        if let session = jarvisSession { ChatListView(session: session) }
+      }
     }
   }
 

@@ -99,7 +99,7 @@ struct StreamSessionView: View {
       UIApplication.shared.isIdleTimerDisabled = false
     }
     .sheet(isPresented: $showSwitchProfile) {
-      ProfileDetailSheet()
+      ProfileDetailSheet(jarvisSession: jarvisSession)
     }
     .alert("Error", isPresented: $viewModel.showError) {
       Button("OK") {
