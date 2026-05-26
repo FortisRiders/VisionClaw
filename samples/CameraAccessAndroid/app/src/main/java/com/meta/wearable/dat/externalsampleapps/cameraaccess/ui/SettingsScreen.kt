@@ -50,6 +50,7 @@ fun SettingsScreen(
     var webrtcSignalingURL by remember { mutableStateOf(SettingsManager.webrtcSignalingURL) }
     var videoStreamingEnabled by remember { mutableStateOf(SettingsManager.videoStreamingEnabled) }
     var proactiveNotificationsEnabled by remember { mutableStateOf(SettingsManager.proactiveNotificationsEnabled) }
+    var highQualityVoiceEnabled by remember { mutableStateOf(SettingsManager.highQualityVoiceEnabled) }
     var showResetDialog by remember { mutableStateOf(false) }
 
     fun save() {
@@ -61,6 +62,7 @@ fun SettingsScreen(
         SettingsManager.webrtcSignalingURL = webrtcSignalingURL.trim()
         SettingsManager.videoStreamingEnabled = videoStreamingEnabled
         SettingsManager.proactiveNotificationsEnabled = proactiveNotificationsEnabled
+        SettingsManager.highQualityVoiceEnabled = highQualityVoiceEnabled
     }
 
     fun reload() {
@@ -72,6 +74,7 @@ fun SettingsScreen(
         webrtcSignalingURL = SettingsManager.webrtcSignalingURL
         videoStreamingEnabled = SettingsManager.videoStreamingEnabled
         proactiveNotificationsEnabled = SettingsManager.proactiveNotificationsEnabled
+        highQualityVoiceEnabled = SettingsManager.highQualityVoiceEnabled
     }
 
     Column(modifier = modifier.fillMaxSize()) {
@@ -185,6 +188,27 @@ fun SettingsScreen(
                 Switch(
                     checked = proactiveNotificationsEnabled,
                     onCheckedChange = { proactiveNotificationsEnabled = it },
+                )
+            }
+
+            // Jarvis Voice
+            SectionHeader("Jarvis Voice")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+                Column {
+                    Text("High Quality Voice", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        "Uses optimized TTS settings for natural speech.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = highQualityVoiceEnabled,
+                    onCheckedChange = { highQualityVoiceEnabled = it },
                 )
             }
 

@@ -20,10 +20,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
@@ -37,11 +43,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.meta.wearable.dat.camera.types.StreamSessionState
 import com.meta.wearable.dat.externalsampleapps.cameraaccess.R
 import com.meta.wearable.dat.externalsampleapps.cameraaccess.gemini.GeminiSessionViewModel
+import com.meta.wearable.dat.externalsampleapps.cameraaccess.openclaw.JarvisVoiceSession
 import com.meta.wearable.dat.externalsampleapps.cameraaccess.stream.StreamViewModel
-import com.meta.wearable.dat.externalsampleapps.cameraaccess.stream.StreamingMode
 import com.meta.wearable.dat.externalsampleapps.cameraaccess.wearables.WearablesViewModel
 import com.meta.wearable.dat.externalsampleapps.cameraaccess.webrtc.WebRTCSessionViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StreamScreen(
     wearablesViewModel: WearablesViewModel,
@@ -57,6 +64,7 @@ fun StreamScreen(
         ),
     geminiViewModel: GeminiSessionViewModel = viewModel(),
     webrtcViewModel: WebRTCSessionViewModel = viewModel(),
+    jarvisSession: JarvisVoiceSession = viewModel(),
 ) {
     val streamUiState by streamViewModel.uiState.collectAsStateWithLifecycle()
     val geminiUiState by geminiViewModel.uiState.collectAsStateWithLifecycle()
@@ -64,28 +72,25 @@ fun StreamScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
 
-    // Wire Gemini VM to Stream VM for frame forwarding
+    var showPTT by remember { mutableStateOf(false) }
+    val pttSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
     LaunchedEffect(geminiViewModel) {
         streamViewModel.geminiViewModel = geminiViewModel
     }
 
-    // Wire WebRTC VM to Stream VM for frame forwarding
     LaunchedEffect(webrtcViewModel) {
         streamViewModel.webrtcViewModel = webrtcViewModel
     }
 
-    // Start stream or phone camera
     LaunchedEffect(isPhoneMode) {
         if (isPhoneMode) {
-            geminiViewModel.streamingMode = StreamingMode.PHONE
             streamViewModel.startPhoneCamera(lifecycleOwner)
         } else {
-            geminiViewModel.streamingMode = StreamingMode.GLASSES
             streamViewModel.startStream()
         }
     }
 
-    // Clean up on exit
     DisposableEffect(Unit) {
         onDispose {
             if (geminiUiState.isGeminiActive) {
@@ -97,7 +102,6 @@ fun StreamScreen(
         }
     }
 
-    // Show errors as toasts
     LaunchedEffect(geminiUiState.errorMessage) {
         geminiUiState.errorMessage?.let { msg ->
             Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
@@ -112,7 +116,6 @@ fun StreamScreen(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        // Video feed
         streamUiState.videoFrame?.let { videoFrame ->
             Image(
                 bitmap = videoFrame.asImageBitmap(),
@@ -123,28 +126,20 @@ fun StreamScreen(
         }
 
         if (streamUiState.streamSessionState == StreamSessionState.STARTING) {
-            CircularProgressIndicator(
-                modifier = Modifier.align(Alignment.Center),
-            )
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
         }
 
-        // Overlays + controls
         Box(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-            // Top overlays (below status bar)
             Column(modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(top = 8.dp)) {
-                // Gemini overlay
                 if (geminiUiState.isGeminiActive) {
                     GeminiOverlay(uiState = geminiUiState)
                 }
-
-                // WebRTC overlay
                 if (webrtcUiState.isActive) {
                     Spacer(modifier = Modifier.height(4.dp))
                     WebRTCOverlay(uiState = webrtcUiState)
                 }
             }
 
-            // Controls at bottom
             ControlsRow(
                 onStopStream = {
                     if (geminiUiState.isGeminiActive) geminiViewModel.stopSession()
@@ -154,27 +149,21 @@ fun StreamScreen(
                 },
                 onCapturePhoto = { streamViewModel.capturePhoto() },
                 onToggleAI = {
-                    if (geminiUiState.isGeminiActive) {
-                        geminiViewModel.stopSession()
-                    } else {
-                        geminiViewModel.startSession()
-                    }
+                    if (geminiUiState.isGeminiActive) geminiViewModel.stopSession()
+                    else geminiViewModel.startSession()
                 },
                 isAIActive = geminiUiState.isGeminiActive,
                 onToggleLive = {
-                    if (webrtcUiState.isActive) {
-                        webrtcViewModel.stopSession()
-                    } else {
-                        webrtcViewModel.startSession()
-                    }
+                    if (webrtcUiState.isActive) webrtcViewModel.stopSession()
+                    else webrtcViewModel.startSession()
                 },
                 isLiveActive = webrtcUiState.isActive,
+                onOpenJarvis = { showPTT = true },
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
     }
 
-    // Share photo dialog
     streamUiState.capturedPhoto?.let { photo ->
         if (streamUiState.isShareDialogVisible) {
             SharePhotoDialog(
@@ -184,6 +173,21 @@ fun StreamScreen(
                     streamViewModel.sharePhoto(bitmap)
                     streamViewModel.hideShareDialog()
                 },
+            )
+        }
+    }
+
+    if (showPTT) {
+        ModalBottomSheet(
+            onDismissRequest = { showPTT = false },
+            sheetState = pttSheetState,
+            modifier = Modifier.fillMaxSize(),
+            containerColor = androidx.compose.ui.graphics.Color.Black,
+        ) {
+            JarvisPTTScreen(
+                session = jarvisSession,
+                onDismiss = { showPTT = false },
+                modifier = Modifier.fillMaxSize(),
             )
         }
     }

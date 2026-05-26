@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -28,6 +29,7 @@ fun ControlsRow(
     isAIActive: Boolean,
     onToggleLive: () -> Unit,
     isLiveActive: Boolean,
+    onOpenJarvis: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -45,11 +47,22 @@ fun ControlsRow(
             modifier = Modifier.weight(1f),
         )
 
-        CaptureButton(
-            onClick = onCapturePhoto,
-        )
+        CaptureButton(onClick = onCapturePhoto)
 
-        // AI toggle button
+        Button(
+            onClick = onOpenJarvis,
+            modifier = Modifier.aspectRatio(1f),
+            colors = ButtonDefaults.buttonColors(containerColor = AppColor.DeepBlue),
+            shape = CircleShape,
+            contentPadding = PaddingValues(0.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Mic,
+                contentDescription = "Jarvis",
+                tint = Color.White,
+            )
+        }
+
         Button(
             onClick = onToggleAI,
             modifier = Modifier.aspectRatio(1f),
@@ -66,7 +79,6 @@ fun ControlsRow(
             )
         }
 
-        // Live toggle button
         Button(
             onClick = onToggleLive,
             modifier = Modifier.aspectRatio(1f),
