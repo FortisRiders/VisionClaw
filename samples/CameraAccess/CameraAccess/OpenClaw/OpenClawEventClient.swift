@@ -10,6 +10,7 @@ class OpenClawEventClient {
   private var shouldReconnect = false
   private var reconnectDelay: TimeInterval = 2
   private let maxReconnectDelay: TimeInterval = 30
+  private var reconnectTask: Task<Void, Never>?
 
   private let clientId = "node-host"
 
@@ -41,6 +42,8 @@ class OpenClawEventClient {
 
   func disconnect() {
     shouldReconnect = false
+    reconnectTask?.cancel()
+    reconnectTask = nil
     isConnected = false
     webSocketTask?.cancel(with: .normalClosure, reason: nil)
     webSocketTask = nil
@@ -249,11 +252,18 @@ class OpenClawEventClient {
 
   private func scheduleReconnect() {
     guard shouldReconnect else { return }
+    reconnectTask?.cancel()
     NSLog("[OpenClawWS] Reconnecting in %.0fs", reconnectDelay)
-    DispatchQueue.main.asyncAfter(deadline: .now() + reconnectDelay) { [weak self] in
-      guard let self, self.shouldReconnect else { return }
-      self.reconnectDelay = min(self.reconnectDelay * 2, self.maxReconnectDelay)
-      self.establishConnection()
+    let delay = reconnectDelay
+    reconnectTask = Task { [weak self] in
+      try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+      guard !Task.isCancelled else { return }
+      await MainActor.run { [weak self] in
+        guard let self, self.shouldReconnect else { return }
+        self.reconnectDelay = min(self.reconnectDelay * 2, self.maxReconnectDelay)
+        self.reconnectTask = nil
+        self.establishConnection()
+      }
     }
   }
 

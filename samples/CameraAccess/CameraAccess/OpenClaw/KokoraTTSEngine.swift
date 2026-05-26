@@ -185,7 +185,7 @@ final class KokoraTTSEngine: NSObject {
     let isReady = false
     var onFinish: (() -> Void)?
     private override init() { super.init() }
-    func speak(_ text: String, voiceId: Int32 = 5, onFinish: @escaping () -> Void) {}
+    func speak(_ text: String, voiceId: Int32 = 5, onFinish: @escaping () -> Void) { onFinish() }
     func stop() { onFinish = nil }
 }
 

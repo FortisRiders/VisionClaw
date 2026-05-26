@@ -25,9 +25,4 @@ struct ProfileScopedStore<T: Codable> {
     func clear() {
         UserDefaults.standard.removeObject(forKey: key)
     }
-
-    mutating func switchProfile(to newProfileId: String, saveBlock: () -> T?) {
-        if let current = saveBlock() { save(current) }
-        currentProfileId = newProfileId
-    }
 }

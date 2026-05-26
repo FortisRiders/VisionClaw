@@ -12,7 +12,7 @@ class AudioManager {
   private var wasCapturingBeforeInterruption = false
   private var useIPhoneMode = false
 
-  private let outputFormat: AVAudioFormat
+  private let playerFormat: AVAudioFormat
 
   // Accumulate resampled PCM into ~100ms chunks before sending
   private let sendQueue = DispatchQueue(label: "audio.accumulator")
@@ -26,11 +26,11 @@ class AudioManager {
   private var foregroundObserver: NSObjectProtocol?
 
   init() {
-    self.outputFormat = AVAudioFormat(
-      commonFormat: .pcmFormatInt16,
+    self.playerFormat = AVAudioFormat(
+      commonFormat: .pcmFormatFloat32,
       sampleRate: GeminiConfig.outputAudioSampleRate,
       channels: GeminiConfig.audioChannels,
-      interleaved: true
+      interleaved: false
     )!
   }
 
@@ -52,12 +52,6 @@ class AudioManager {
     guard !isCapturing else { return }
 
     audioEngine.attach(playerNode)
-    let playerFormat = AVAudioFormat(
-      commonFormat: .pcmFormatFloat32,
-      sampleRate: GeminiConfig.outputAudioSampleRate,
-      channels: GeminiConfig.audioChannels,
-      interleaved: false
-    )!
     audioEngine.connect(playerNode, to: audioEngine.mainMixerNode, format: playerFormat)
 
     let inputNode = audioEngine.inputNode
@@ -130,13 +124,6 @@ class AudioManager {
   func playAudio(data: Data) {
     guard isCapturing, !data.isEmpty else { return }
 
-    let playerFormat = AVAudioFormat(
-      commonFormat: .pcmFormatFloat32,
-      sampleRate: GeminiConfig.outputAudioSampleRate,
-      channels: GeminiConfig.audioChannels,
-      interleaved: false
-    )!
-
     let frameCount = UInt32(data.count) / (GeminiConfig.audioBitsPerSample / 8 * GeminiConfig.audioChannels)
     guard frameCount > 0 else { return }
 
@@ -183,6 +170,7 @@ class AudioManager {
   // MARK: - Audio Interruption & Route Change Handling
 
   private func setupInterruptionHandling() {
+    removeObservers()
     interruptionObserver = NotificationCenter.default.addObserver(
       forName: AVAudioSession.interruptionNotification,
       object: AVAudioSession.sharedInstance(),

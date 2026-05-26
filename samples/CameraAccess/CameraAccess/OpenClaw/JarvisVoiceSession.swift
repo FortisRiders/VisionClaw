@@ -67,6 +67,8 @@ class JarvisVoiceSession: NSObject, ObservableObject {
     private weak var liveModeAudioManager: AudioManager?
     private var liveStandaloneEngine: AVAudioEngine?
     private var silenceTask: Task<Void, Never>?
+    private var sendTask: Task<Void, Never>?
+    private var messageSaveTask: Task<Void, Never>?
     private var ttsBgTask: UIBackgroundTaskIdentifier = .invalid
     private var audioInterruptionObserver: NSObjectProtocol?
 
@@ -187,6 +189,8 @@ class JarvisVoiceSession: NSObject, ObservableObject {
     }
 
     func switchChat(to chat: JarvisChat) async {
+        messageSaveTask?.cancel()
+        messageSaveTask = nil
         let pid = profileId
         store.save(messages)
         activeChatId = chat.id
@@ -336,7 +340,7 @@ class JarvisVoiceSession: NSObject, ObservableObject {
         stopEngine()
         recognitionRequest?.endAudio()
 
-        Task {
+        sendTask = Task {
             let transcript = await withCheckedContinuation { (cont: CheckedContinuation<String, Never>) in
                 self.finalTranscriptContinuation = cont
                 Task {
@@ -409,6 +413,7 @@ class JarvisVoiceSession: NSObject, ObservableObject {
         recognitionRequest?.endAudio()
         recognitionRequest = nil
         eventClient.disconnect()
+        eventClient.onNotification = nil
         liveModeAudioManager?.pttAudioConsumer = nil
         stopEngine()
         if let engine = liveStandaloneEngine {
@@ -685,7 +690,7 @@ class JarvisVoiceSession: NSObject, ObservableObject {
         guard !trimmed.isEmpty, state == .idle else { return }
         state = .sending
         appendMessage(ChatMessage(role: .user, text: trimmed))
-        Task {
+        sendTask = Task {
             let frames = self.frameProvider?() ?? []
             let result = await self.bridge.delegateTask(task: trimmed, images: frames)
             switch result {
@@ -700,6 +705,8 @@ class JarvisVoiceSession: NSObject, ObservableObject {
     }
 
     func cancel(sharedAudioManager: AudioManager?) {
+        sendTask?.cancel()
+        sendTask = nil
         sharedAudioManager?.pttAudioConsumer = nil
         resumeTranscript(liveTranscript)
         recognitionTask?.cancel()
@@ -713,6 +720,10 @@ class JarvisVoiceSession: NSObject, ObservableObject {
     }
 
     func switchProfile() {
+        sendTask?.cancel()
+        sendTask = nil
+        messageSaveTask?.cancel()
+        messageSaveTask = nil
         let newPid = ProfileManager.shared.activeProfile?.id.uuidString ?? "default"
         store.save(messages)
         let savedChatId = UserDefaults.standard.string(forKey: "jarvis.activeChatId.\(newPid)") ?? "main"
@@ -742,8 +753,17 @@ class JarvisVoiceSession: NSObject, ObservableObject {
         if messages.count > Self.maxStoredMessages {
             messages = Array(messages.suffix(Self.maxStoredMessages))
         }
-        store.save(messages)
+        scheduleSave()
         updateActiveChatMeta(with: message)
+    }
+
+    private func scheduleSave() {
+        messageSaveTask?.cancel()
+        messageSaveTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard !Task.isCancelled, let self else { return }
+            self.store.save(self.messages)
+        }
     }
 
     private func resumeTranscript(_ text: String) {

@@ -92,6 +92,10 @@ class StreamSessionViewModel: ObservableObject {
   private var jarvisFrameBuffer: [UIImage] = []
   private var lastBufferedFrameTime: Date = .distantPast
   private let maxBufferFrames = 15
+  deinit {
+    deviceMonitorTask?.cancel()
+  }
+
   init(wearables: WearablesInterface) {
     self.wearables = wearables
     // Let the SDK auto-select from available devices
